@@ -163,6 +163,12 @@ body {
   gap: 2rem;
   max-height: 90vh;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.content-area::-webkit-scrollbar {
+  display: none;
 }
 
 .nav-tabs {
