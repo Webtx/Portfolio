@@ -1,223 +1,206 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Varela+Round&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
+* {
   margin: 0;
-  font-family: "Inter", sans-serif;
-  background-color: #1a1e27;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #e2e8f0;
-  overflow: hidden;
-}
-
-#root {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.app-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  width: 100%;
-  padding: 1rem;
+  padding: 0;
   box-sizing: border-box;
 }
 
-.loading-state,
-.error-state {
-  background-color: #2d313c;
-  border-radius: 15px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-  padding: 3rem;
-  text-align: center;
+body {
+  font-family: "Varela Round", sans-serif;
+  background: #000000;
+  color: #ffffff;
+  min-height: 100vh;
 }
 
-.loading-text {
-  font-size: 1.8rem;
-  font-weight: 500;
-  color: #a0aec0;
-  animation: pulse 1.5s infinite ease-in-out;
+.app-container {
+  min-height: 100vh;
+  display: grid;
+  padding: 2rem;
+  padding-top: 3rem;
+  padding-left: 8rem;
 }
 
-.error-state {
-  background-color: #c53030;
-  color: #fff;
+.portfolio-wrapper {
+  display: grid;
+  grid-template-columns: 2fr 2fr;
+  gap: 3rem;
+  width: 100%;
+  animation: fadeIn 0.6s ease-out;
+  justify-self: start;
 }
 
-.error-title {
-  font-size: 2.8rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.error-message {
-  font-size: 1.3rem;
-  margin-bottom: 0.5rem;
-}
-
-.error-sub-message {
-  font-size: 1rem;
-  opacity: 0.8;
-}
-
-.main-card-wrapper {
-  background-color: #262a33;
-  border-radius: 20px;
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(255, 255, 255, 0.05);
+/* LEFT SIDEBAR - PROFILE */
+.profile-sidebar {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 2rem;
-  padding: 3rem;
-  max-width: 500px;
-  width: 90%;
-  animation: fadeInScale 0.8s ease-out forwards;
+  padding: 2rem;
+  background: transparent;
+  border-radius: 32px;
+  border: none;
+  height: fit-content;
 }
 
-.auth0-logo {
-  width: 160px;
-  margin-bottom: 1.5rem;
-  opacity: 0;
-  animation: slideInDown 1s ease-out forwards 0.2s;
+.profile-header {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  justify-content: flex-start;
 }
 
-.main-title {
-  font-size: 2.8rem;
-  font-weight: 700;
-  color: #f7fafc;
-  text-align: center;
-  margin-bottom: 1rem;
-  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  animation: fadeIn 1s ease-out forwards 0.4s;
+.profile-image-small {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
-.action-card {
-  background-color: #2d313c;
-  border-radius: 15px;
-  box-shadow:
-    inset 0 2px 5px rgba(0, 0, 0, 0.3),
-    0 5px 15px rgba(0, 0, 0, 0.3);
-  padding: 2.5rem;
+.profile-name-section {
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  margin-top: 1.5rem;
+}
+
+.profile-name-row {
+  display: flex;
+  gap: 2.5rem;
   align-items: center;
-  gap: 1.8rem;
-  width: calc(100% - 2rem);
-  opacity: 0;
-  animation: fadeIn 1s ease-out forwards 0.6s;
 }
 
-.action-text {
-  font-size: 1.25rem;
-  color: #cbd5e0;
-  text-align: center;
-  line-height: 1.6;
-  font-weight: 400;
+.profile-name {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  letter-spacing: 0.1em;
 }
 
-.button {
-  padding: 1.1rem 2.8rem;
-  font-size: 1.2rem;
-  font-weight: 600;
-  border-radius: 10px;
+.profile-role {
+  font-size: 0.9rem;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+.get-in-touch-btn {
+  padding: 0.6rem 1.9rem;
+  background: #8ab9ff;
+  color: #ffffff;
   border: none;
+  border-radius: 20px;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  outline: none;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  width: fit-content;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.bio {
+  font-size: 0.95rem;
+  color: #ffffff;
+  line-height: 1.6;
+  font-weight: 600;
+}
+
+.social-handle {
+  font-size: 0.9rem;
+  color: #ffffff;
+  text-decoration: none;
+  transition: color 0.3s;
+}
+
+.social-handle:hover {
+  color: #ffffff;
+}
+
+.social-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.social-btn {
+  padding: 0.6rem 1.2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid #ffffff;
+  color: #ffffff;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
   text-decoration: none;
   display: inline-block;
 }
 
-.button:focus {
-  box-shadow: 0 0 0 4px rgba(99, 179, 237, 0.5);
+.social-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+  color: #ffffff;
+  transform: translateY(-2px);
 }
 
-.button.login {
-  background-color: #63b3ed;
-  color: #1a1e27;
-}
-
-.button.login:hover {
-  background-color: #4299e1;
-  transform: translateY(-5px) scale(1.03);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
-}
-
-.button.logout {
-  background-color: #fc8181;
-  color: #1a1e27;
-}
-
-.button.logout:hover {
-  background-color: #e53e3e;
-  transform: translateY(-5px) scale(1.03);
-  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.5);
-}
-
-.logged-in-section {
+/* RIGHT SIDE - CONTENT */
+.content-area {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  width: 100%;
+  gap: 2rem;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
-.logged-in-message {
-  font-size: 1.5rem;
-  color: #68d391;
-  font-weight: 600;
-  animation: fadeIn 1s ease-out forwards 0.8s;
+.nav-tabs {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
 }
 
-.profile-section-title {
-  font-size: 2.2rem;
-  animation: slideInUp 1s ease-out forwards 1s;
+.nav-tab {
+  padding: 0.6rem 1.2rem;
+  background: #ffffff;
+  border: 2px solid #ffffff;
+  color: #000000;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 800;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
 }
 
-.profile-card {
-  padding: 2.2rem;
-  animation: scaleIn 0.8s ease-out forwards 1.2s;
+.nav-tab:hover,
+.nav-tab.active {
+  background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+  border-color: #ffffff;
+  color: #000000;
+  transform: translateY(-2px);
 }
 
-.profile-picture {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  transition: transform 0.3s ease-in-out;
-  object-fit: cover;
+.content-panel {
+  padding: 2rem;
+  background: transparent;
+  border: none;
+  border-radius: 32px;
+  animation: slideInUp 0.5s ease-out;
 }
 
-.profile-picture:hover {
-  transform: scale(1.05);
-}
-
-.profile-name {
-  font-size: 2rem;
-  margin-top: 0.5rem;
-}
-
-.profile-email {
-  font-size: 1.15rem;
-  text-align: center;
-}
-
+/* ANIMATIONS */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -227,32 +210,10 @@ body {
   }
 }
 
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes slideInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-70px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateY(50px);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
@@ -260,43 +221,102 @@ body {
   }
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .portfolio-wrapper {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
-  50% {
-    opacity: 0.6;
+
+  .profile-sidebar {
+    padding: 1.5rem;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .profile-image-small {
+    width: 100px;
+    height: 100px;
+  }
+
+  .profile-name {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .nav-tabs {
+    flex-direction: column;
+  }
+
+  .nav-tab {
+    width: 100%;
   }
 }
 
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
   }
-  to {
-    opacity: 1;
-    transform: scale(1);
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
-@media (max-width: 600px) {
-  .main-card-wrapper {
-    padding: 2rem;
-    gap: 1.5rem;
+@layer base {
+  * {
+    @apply border-border;
   }
-
-  .main-title {
-    font-size: 2.2rem;
-  }
-
-  .button {
-    padding: 0.9rem 2rem;
-    font-size: 1rem;
-  }
-
-  .auth0-logo {
-    width: 120px;
+  body {
+    @apply bg-background text-foreground;
   }
 }
