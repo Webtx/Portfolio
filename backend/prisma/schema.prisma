@@ -1,0 +1,116 @@
+// Prisma schema for Portfolio backend
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TestimonialStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Skill {
+  id        String   @id @default(uuid())
+  name      Json
+  level     Int?
+  category  Json?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  title       Json
+  description Json
+  url         String?
+  repoUrl     String?
+  imageUrl    String?
+  techStack   String[] @default([])
+  featured    Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Experience {
+  id          String   @id @default(uuid())
+  company     Json
+  role        Json
+  description Json
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean  @default(false)
+  location    Json?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Education {
+  id          String   @id @default(uuid())
+  school      Json
+  degree      Json
+  field       Json?
+  description Json?
+  startDate   DateTime
+  endDate     DateTime?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Resume {
+  id        String   @id @default(uuid())
+  title     Json?
+  fileUrl   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactInfo {
+  id        String   @id @default(uuid())
+  email     String
+  phone     String?
+  location  Json?
+  website   String?
+  socials   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Hobby {
+  id          String   @id @default(uuid())
+  name        Json
+  description Json?
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  subject   String?
+  message   String
+  createdAt DateTime @default(now())
+}
+
+model Testimonial {
+  id        String            @id @default(uuid())
+  name      String
+  role      String?
+  company   String?
+  content   String
+  status    TestimonialStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}

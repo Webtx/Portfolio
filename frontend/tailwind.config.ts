@@ -10,6 +10,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      transitionTimingFunction: {
+        snap: "cubic-bezier(0,0,0,1)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
