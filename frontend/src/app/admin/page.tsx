@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import LoginButton from "@/components/auth/LoginButton";
 import LogoutButton from "@/components/auth/LogoutButton";
-import { apiFetch } from "@/lib/api";
+import { API_BASE_URL, apiFetch, getAccessToken } from "@/lib/api";
 
 type FieldType =
   | "text"
@@ -14,7 +14,8 @@ type FieldType =
   | "date"
   | "bilingual"
   | "array"
-  | "json";
+  | "json"
+  | "image";
 
 type FieldDef = {
   name: string;
@@ -57,14 +58,13 @@ const resources: ResourceDef[] = [
     fields: [
       { name: "title", label: "Title", type: "bilingual" },
       { name: "description", label: "Description", type: "bilingual" },
-      { name: "url", label: "Live URL", type: "text" },
       { name: "repoUrl", label: "Repo URL", type: "text" },
-      { name: "imageUrl", label: "Image URL", type: "text" },
+      { name: "imageUrl", label: "Image", type: "image" },
       { name: "techStack", label: "Tech Stack (comma separated)", type: "array" },
       { name: "featured", label: "Featured", type: "boolean" },
       { name: "order", label: "Order", type: "number" }
     ],
-    summaryFields: ["title", "url", "featured", "order"]
+    summaryFields: ["title", "description", "imageUrl", "techStack", "featured", "order"]
   },
   {
     key: "experiences",
@@ -204,7 +204,7 @@ function buildPayload(fields: FieldDef[], form: Record<string, any>) {
     if (field.type === "bilingual") {
       data[field.name] = value;
     } else if (field.type === "number") {
-      data[field.name] = value === "" ? undefined : Number(value);
+      data[field.name] = value === "" ? null : Number(value);
     } else if (field.type === "boolean") {
       data[field.name] = Boolean(value);
     } else if (field.type === "array") {
@@ -215,11 +215,11 @@ function buildPayload(fields: FieldDef[], form: Record<string, any>) {
             .filter(Boolean)
         : value;
     } else if (field.type === "date") {
-      data[field.name] = value ? inputToIso(value) : undefined;
+      data[field.name] = value ? inputToIso(value) : null;
     } else if (field.type === "json") {
-      data[field.name] = value ? JSON.parse(value) : undefined;
+      data[field.name] = value ? JSON.parse(value) : null;
     } else {
-      data[field.name] = value === "" ? undefined : value;
+      data[field.name] = value === "" ? null : value;
     }
   }
   return data;
@@ -256,19 +256,33 @@ export default function AdminPage() {
   }, [active]);
 
   const renderFieldValue = (field: FieldDef, value: any) => {
-    if (value === null || value === undefined || value === "") return "—";
+    if (value === null || value === undefined || value === "") return "-";
     if (field.type === "bilingual") {
-      return value?.en || value?.fr || "—";
+      const en = value?.en?.trim();
+      const fr = value?.fr?.trim();
+      if (en && fr) return `${en} / ${fr}`;
+      return en || fr || "-";
     }
     if (field.type === "boolean") return value ? "Yes" : "No";
-    if (field.type === "array") return Array.isArray(value) ? value.join(", ") : "—";
+    if (field.type === "array") return Array.isArray(value) ? value.join(", ") : "-";
     if (field.type === "date") {
       const d = new Date(value);
-      return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+      return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
     }
-    if (field.type === "json") return "[JSON]";
+    if (field.type === "json") return "JSON";
+    if (field.type === "image") {
+      return value ? (
+        <img
+          src={value}
+          alt="Preview"
+          className="h-12 w-20 rounded-lg border border-white/10 object-cover"
+        />
+      ) : (
+        "-"
+      );
+    }
     const text = String(value);
-    return text.length > 120 ? `${text.slice(0, 120)}…` : text;
+    return text.length > 120 ? `${text.slice(0, 120)}...` : text;
   };
 
   const isAuthenticated = Boolean(user);
@@ -314,16 +328,26 @@ export default function AdminPage() {
     setError(null);
     try {
       const payload = buildPayload(active.fields, form);
+      let saved: Record<string, any> | null = null;
       if (selectedId) {
-        await apiFetch(`${active.path}/${selectedId}`, {
+        saved = await apiFetch(`${active.path}/${selectedId}`, {
           method: "PUT",
           body: JSON.stringify(payload)
         }, true);
       } else {
-        await apiFetch(active.path, {
+        saved = await apiFetch(active.path, {
           method: "POST",
           body: JSON.stringify(payload)
         }, true);
+      }
+      if (saved) {
+        setItems((prev) => {
+          const idx = prev.findIndex((item) => item.id === saved?.id);
+          if (idx === -1) return [saved, ...prev];
+          const next = [...prev];
+          next[idx] = saved;
+          return next;
+        });
       }
       await loadItems();
       onReset();
@@ -574,6 +598,9 @@ function FieldInput({
   value: any;
   onChange: (val: any) => void;
 }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   if (field.type === "bilingual") {
     return (
       <div className="grid gap-2">
@@ -645,6 +672,71 @@ function FieldInput({
           value={value || "{}"}
           onChange={(e) => onChange(e.target.value)}
         />
+      </div>
+    );
+  }
+
+  if (field.type === "image") {
+    const onFileChange = async (file?: File | null) => {
+      if (!file) return;
+      setUploading(true);
+      setUploadError(null);
+      try {
+        const token = await getAccessToken();
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`${API_BASE_URL}/admin/uploads`, {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          body: formData
+        });
+        if (!res.ok) {
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const json = await res.json();
+            throw new Error(json?.error?.message || json?.message || "Upload failed");
+          }
+          const text = await res.text();
+          throw new Error(text || "Upload failed");
+        }
+        const data = await res.json();
+        onChange(data.url);
+      } catch (err: any) {
+        setUploadError(err?.message || "Upload failed");
+      } finally {
+        setUploading(false);
+      }
+    };
+
+    return (
+      <div className="grid gap-3">
+        <label className="text-sm font-semibold text-white/80">{field.label}</label>
+        <div className="flex flex-col gap-2">
+          <label className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 hover:border-white/60 hover:bg-white/20 transition cursor-pointer w-fit">
+            Upload Image
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => onFileChange(e.target.files?.[0])}
+            />
+          </label>
+          <input
+            className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
+            placeholder="Image URL"
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {value && (
+            <img
+              src={value}
+              alt="Preview"
+              className="rounded-xl border border-white/10 max-h-40 object-cover"
+            />
+          )}
+          {uploading && <div className="text-xs text-white/60">Uploading...</div>}
+          {uploadError && <div className="text-xs text-red-300">{uploadError}</div>}
+        </div>
       </div>
     );
   }

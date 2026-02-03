@@ -9,10 +9,14 @@ import { listContactInfo, createContactInfo, updateContactInfo, deleteContactInf
 import { listHobbies, createHobby, updateHobby, deleteHobby } from "../controllers/hobbyController";
 import { listMessages, deleteMessage } from "../controllers/messageController";
 import { listAllTestimonials, approveTestimonial, rejectTestimonial, deleteTestimonial } from "../controllers/testimonialController";
+import { uploadImage } from "../controllers/uploadController";
+import multer from "multer";
 
 export const adminRouter = Router();
 
 adminRouter.use(requireAuth, requireAdmin);
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 adminRouter.get("/skills", listSkills);
 adminRouter.post("/skills", createSkill);
@@ -56,3 +60,5 @@ adminRouter.get("/testimonials", listAllTestimonials);
 adminRouter.post("/testimonials/:id/approve", approveTestimonial);
 adminRouter.post("/testimonials/:id/reject", rejectTestimonial);
 adminRouter.delete("/testimonials/:id", deleteTestimonial);
+
+adminRouter.post("/uploads", upload.single("file"), uploadImage);

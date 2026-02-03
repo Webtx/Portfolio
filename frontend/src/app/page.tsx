@@ -60,6 +60,16 @@ type Experience = {
   location?: BilingualText | null;
 };
 
+type Project = {
+  id: string;
+  title: BilingualText;
+  description: BilingualText;
+  imageUrl?: string | null;
+  repoUrl?: string | null;
+  techStack?: string[] | null;
+  featured?: boolean | null;
+};
+
 type Education = {
   id: string;
   school: BilingualText;
@@ -208,10 +218,12 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>("about");
   const [lang, setLang] = useState<"en" | "fr">("en");
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [education, setEducation] = useState<Education[]>([]);
   const [hobbies, setHobbies] = useState<Hobby[]>([]);
   const [loadingAbout, setLoadingAbout] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loadingTestimonials, setLoadingTestimonials] = useState(false);
   const [testimonialNotice, setTestimonialNotice] = useState("");
@@ -254,8 +266,22 @@ export default function Home() {
     }
   };
 
+  const loadProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/public/projects`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      setProjects(Array.isArray(data) ? data : []);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
   useEffect(() => {
     loadAbout();
+    loadProjects();
   }, []);
 
   const loadTestimonials = async () => {
@@ -426,7 +452,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="app-container">
+      <div className="app-container" style={{ paddingTop: "120px" }}>
         <div className="portfolio-wrapper">
           {/* LEFT SIDEBAR - PROFILE */}
           <div className="profile-sidebar">
@@ -510,15 +536,6 @@ export default function Home() {
                   is text
                 </p>
               </div>
-
-              <a
-                href="https://instagram.com"
-                className="social-handle"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                random+link
-              </a>
 
               <div className="social-links">
                 <a
@@ -818,135 +835,118 @@ export default function Home() {
                   <h2 style={{ fontSize: "1.8rem", marginBottom: "1.5rem" }}>
                     My Projects
                   </h2>
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: "1.5rem",
-                      gridTemplateColumns: "1fr",
-                    }}
-                  >
+                  {loadingProjects ? (
+                    <p style={{ color: "#d7d7d7" }}>Loading projects...</p>
+                  ) : projects.length === 0 ? (
+                    <p style={{ color: "#d7d7d7" }}>No projects yet.</p>
+                  ) : (
                     <div
                       style={{
-                        background: "rgba(255, 255, 255, 0.05)",
-                        borderRadius: "18px",
-                        overflow: "hidden",
-                        border: "1px solid rgba(255, 255, 255, 0.12)",
+                        display: "grid",
+                        gap: "1.5rem",
+                        gridTemplateColumns: "1fr",
                       }}
                     >
-                      <div
-                        style={{
-                          position: "relative",
-                          width: "100%",
-                          height: "350px",
-                        }}
-                      >
-                        <Image
-                          src="https://via.placeholder.com/900x600"
-                          alt="Project One preview"
-                          fill
-                          style={{ objectFit: "cover" }}
-                        />
-                      </div>
-                      <div style={{ padding: "0.9rem 1rem 1.1rem" }}>
-                        <h3
-                          style={{ margin: "0 0 0.4rem 0", fontSize: "1rem" }}
-                        >
-                          Project One
-                        </h3>
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#e0e0e0",
-                            lineHeight: "1.5",
-                          }}
-                        >
-                          Brief description of your first project. Highlight the
-                          tech stack and impact.
-                        </p>
-                      </div>
+                      {projects.map((project) => {
+                        const href = project.repoUrl?.trim();
+                        const CardTag = href ? "a" : "div";
+                        return (
+                          <CardTag
+                            key={project.id}
+                            href={href || undefined}
+                            target={href ? "_blank" : undefined}
+                            rel={href ? "noreferrer" : undefined}
+                            style={{
+                              background: "rgba(255, 255, 255, 0.05)",
+                              borderRadius: "18px",
+                              overflow: "hidden",
+                              border: "1px solid rgba(255, 255, 255, 0.12)",
+                              textDecoration: "none",
+                              color: "inherit",
+                              transition:
+                                "transform 0.2s ease, border 0.2s ease",
+                            }}
+                          >
+                            {project.imageUrl && (
+                              <div
+                                style={{
+                                  position: "relative",
+                                  width: "100%",
+                                  height: "350px",
+                                }}
+                              >
+                                <Image
+                                  src={project.imageUrl}
+                                  alt={`${
+                                    project.title?.[lang] ||
+                                    project.title?.en ||
+                                    "Project"
+                                  } preview`}
+                                  fill
+                                  style={{ objectFit: "cover" }}
+                                />
+                              </div>
+                            )}
+                            <div style={{ padding: "0.9rem 1rem 1.1rem" }}>
+                              <h3
+                                style={{
+                                  margin: "0 0 0.4rem 0",
+                                  fontSize: "1rem",
+                                }}
+                              >
+                                {
+                                  (project.title?.[lang] ||
+                                    project.title?.en ||
+                                    "Project") as string
+                                }
+                              </h3>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  color: "#e0e0e0",
+                                  lineHeight: "1.5",
+                                }}
+                              >
+                                {
+                                  (project.description?.[lang] ||
+                                    project.description?.en ||
+                                    "") as string
+                                }
+                              </p>
+                              {project.techStack &&
+                                project.techStack.length > 0 && (
+                                  <div
+                                    style={{
+                                      marginTop: "0.75rem",
+                                      display: "flex",
+                                      flexWrap: "wrap",
+                                      gap: "0.5rem",
+                                    }}
+                                  >
+                                    {project.techStack.map((tech) => (
+                                      <span
+                                        key={tech}
+                                        style={{
+                                          padding: "0.3rem 0.7rem",
+                                          borderRadius: "999px",
+                                          border:
+                                            "1px solid rgba(255, 255, 255, 0.2)",
+                                          background:
+                                            "rgba(255, 255, 255, 0.08)",
+                                          fontSize: "0.8rem",
+                                        }}
+                                      >
+                                        {tech}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                            </div>
+                          </CardTag>
+                        );
+                      })}
                     </div>
-
-                    <div
-                      style={{
-                        background: "rgba(255, 255, 255, 0.05)",
-                        borderRadius: "18px",
-                        overflow: "hidden",
-                        border: "1px solid rgba(255, 255, 255, 0.12)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "relative",
-                          width: "100%",
-                          height: "350px",
-                        }}
-                      >
-                        <Image
-                          src="https://via.placeholder.com/900x600"
-                          alt="Project Two preview"
-                          fill
-                          style={{ objectFit: "cover" }}
-                        />
-                      </div>
-                      <div style={{ padding: "0.9rem 1rem 1.1rem" }}>
-                        <h3
-                          style={{ margin: "0 0 0.4rem 0", fontSize: "1rem" }}
-                        >
-                          Project Two
-                        </h3>
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#e0e0e0",
-                            lineHeight: "1.5",
-                          }}
-                        >
-                          Brief description of your second project. Mention
-                          outcomes and what you built.
-                        </p>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        background: "rgba(255, 255, 255, 0.05)",
-                        borderRadius: "18px",
-                        overflow: "hidden",
-                        border: "1px solid rgba(255, 255, 255, 0.12)",
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: "relative",
-                          width: "100%",
-                          height: "350px",
-                        }}
-                      >
-                        <Image
-                          src="https://via.placeholder.com/900x600"
-                          alt="Project Three preview"
-                          fill
-                          style={{ objectFit: "cover" }}
-                        />
-                      </div>
-                      <div style={{ padding: "0.9rem 1rem 1.1rem" }}>
-                        <h3
-                          style={{ margin: "0 0 0.4rem 0", fontSize: "1rem" }}
-                        >
-                          Project Three
-                        </h3>
-                        <p
-                          style={{
-                            margin: 0,
-                            color: "#e0e0e0",
-                            lineHeight: "1.5",
-                          }}
-                        >
-                          Brief description of your third project. Mention
-                          outcomes and what you built.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -1081,7 +1081,7 @@ export default function Home() {
                                     year: "numeric",
                                     month: "short",
                                     day: "numeric",
-                                  }
+                                  },
                                 )}
                               </p>
                             </div>
