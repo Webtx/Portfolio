@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
 import LoginButton from "@/components/auth/LoginButton";
 import LogoutButton from "@/components/auth/LogoutButton";
@@ -47,9 +49,9 @@ const resources: ResourceDef[] = [
       { name: "name", label: "Name", type: "bilingual" },
       { name: "level", label: "Level (1-10)", type: "number" },
       { name: "category", label: "Category", type: "bilingual" },
-      { name: "order", label: "Order", type: "number" }
+      { name: "order", label: "Order", type: "number" },
     ],
-    summaryFields: ["name", "category", "level", "order"]
+    summaryFields: ["name", "category", "level", "order"],
   },
   {
     key: "projects",
@@ -60,11 +62,22 @@ const resources: ResourceDef[] = [
       { name: "description", label: "Description", type: "bilingual" },
       { name: "repoUrl", label: "Repo URL", type: "text" },
       { name: "imageUrl", label: "Image", type: "image" },
-      { name: "techStack", label: "Tech Stack (comma separated)", type: "array" },
+      {
+        name: "techStack",
+        label: "Tech Stack (comma separated)",
+        type: "array",
+      },
       { name: "featured", label: "Featured", type: "boolean" },
-      { name: "order", label: "Order", type: "number" }
+      { name: "order", label: "Order", type: "number" },
     ],
-    summaryFields: ["title", "description", "imageUrl", "techStack", "featured", "order"]
+    summaryFields: [
+      "title",
+      "description",
+      "imageUrl",
+      "techStack",
+      "featured",
+      "order",
+    ],
   },
   {
     key: "experiences",
@@ -78,9 +91,9 @@ const resources: ResourceDef[] = [
       { name: "endDate", label: "End Date", type: "date" },
       { name: "isCurrent", label: "Current Role", type: "boolean" },
       { name: "location", label: "Location", type: "bilingual" },
-      { name: "order", label: "Order", type: "number" }
+      { name: "order", label: "Order", type: "number" },
     ],
-    summaryFields: ["role", "company", "startDate", "endDate", "isCurrent"]
+    summaryFields: ["role", "company", "startDate", "endDate", "isCurrent"],
   },
   {
     key: "education",
@@ -93,9 +106,9 @@ const resources: ResourceDef[] = [
       { name: "description", label: "Description", type: "bilingual" },
       { name: "startDate", label: "Start Date", type: "date" },
       { name: "endDate", label: "End Date", type: "date" },
-      { name: "order", label: "Order", type: "number" }
+      { name: "order", label: "Order", type: "number" },
     ],
-    summaryFields: ["school", "degree", "startDate", "endDate"]
+    summaryFields: ["school", "degree", "startDate", "endDate"],
   },
   {
     key: "resumes",
@@ -104,9 +117,9 @@ const resources: ResourceDef[] = [
     fields: [
       { name: "title", label: "Title", type: "bilingual" },
       { name: "fileUrl", label: "File URL", type: "text" },
-      { name: "isActive", label: "Active", type: "boolean" }
+      { name: "isActive", label: "Active", type: "boolean" },
     ],
-    summaryFields: ["title", "isActive", "fileUrl"]
+    summaryFields: ["title", "isActive", "fileUrl"],
   },
   {
     key: "contact-info",
@@ -117,9 +130,9 @@ const resources: ResourceDef[] = [
       { name: "phone", label: "Phone", type: "text" },
       { name: "location", label: "Location", type: "bilingual" },
       { name: "website", label: "Website", type: "text" },
-      { name: "socials", label: "Socials (JSON)", type: "json" }
+      { name: "socials", label: "Socials (JSON)", type: "json" },
     ],
-    summaryFields: ["email", "phone", "location", "website"]
+    summaryFields: ["email", "phone", "location", "website"],
   },
   {
     key: "hobbies",
@@ -128,22 +141,22 @@ const resources: ResourceDef[] = [
     fields: [
       { name: "name", label: "Name", type: "bilingual" },
       { name: "description", label: "Description", type: "bilingual" },
-      { name: "order", label: "Order", type: "number" }
+      { name: "order", label: "Order", type: "number" },
     ],
-    summaryFields: ["name", "order"]
+    summaryFields: ["name", "order"],
   },
   {
     key: "testimonials",
     label: "Testimonials",
     path: "/admin/testimonials",
-    fields: []
+    fields: [],
   },
   {
     key: "messages",
     label: "Messages",
     path: "/admin/messages",
-    fields: []
-  }
+    fields: [],
+  },
 ];
 
 const aboutKeys = ["skills", "experiences", "education", "hobbies"];
@@ -166,6 +179,7 @@ const inputToIso = (value?: string) => {
 const emptyBilingual = { en: "", fr: "" };
 
 function buildEmptyForm(fields: FieldDef[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = {};
   for (const field of fields) {
     if (field.type === "bilingual") data[field.name] = { ...emptyBilingual };
@@ -176,7 +190,11 @@ function buildEmptyForm(fields: FieldDef[]) {
   return data;
 }
 
-function normalizeItemToForm(fields: FieldDef[], item: Record<string, any>) {
+function normalizeItemToForm(
+  fields: FieldDef[],
+  item: Record<string, unknown>,
+) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = {};
   for (const field of fields) {
     const value = item?.[field.name];
@@ -187,7 +205,7 @@ function normalizeItemToForm(fields: FieldDef[], item: Record<string, any>) {
     } else if (field.type === "array") {
       data[field.name] = Array.isArray(value) ? value : [];
     } else if (field.type === "date") {
-      data[field.name] = dateToInput(value);
+      data[field.name] = dateToInput(value as string | undefined);
     } else if (field.type === "json") {
       data[field.name] = value ? JSON.stringify(value, null, 2) : "{}";
     } else {
@@ -197,7 +215,8 @@ function normalizeItemToForm(fields: FieldDef[], item: Record<string, any>) {
   return data;
 }
 
-function buildPayload(fields: FieldDef[], form: Record<string, any>) {
+function buildPayload(fields: FieldDef[], form: Record<string, unknown>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = {};
   for (const field of fields) {
     const value = form[field.name];
@@ -208,16 +227,17 @@ function buildPayload(fields: FieldDef[], form: Record<string, any>) {
     } else if (field.type === "boolean") {
       data[field.name] = Boolean(value);
     } else if (field.type === "array") {
-      data[field.name] = typeof value === "string"
-        ? value
-            .split(",")
-            .map((v) => v.trim())
-            .filter(Boolean)
-        : value;
+      data[field.name] =
+        typeof value === "string"
+          ? value
+              .split(",")
+              .map((v) => v.trim())
+              .filter(Boolean)
+          : value;
     } else if (field.type === "date") {
-      data[field.name] = value ? inputToIso(value) : null;
+      data[field.name] = value ? inputToIso(value as string) : null;
     } else if (field.type === "json") {
-      data[field.name] = value ? JSON.parse(value) : null;
+      data[field.name] = value ? JSON.parse(value as string) : null;
     } else {
       data[field.name] = value === "" ? null : value;
     }
@@ -230,22 +250,34 @@ export default function AdminPage() {
   const getResourceByKey = (key: string) =>
     resources.find((res) => res.key === key) || resources[0];
   const [activeGroup, setActiveGroup] = useState<"about" | "general">("about");
-  const [active, setActive] = useState<ResourceDef>(getResourceByKey(defaultAboutKey));
-  const [items, setItems] = useState<Record<string, any>[]>([]);
+  const [active, setActive] = useState<ResourceDef>(
+    getResourceByKey(defaultAboutKey),
+  );
+  const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "error" | "success" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [form, setForm] = useState<Record<string, any>>(buildEmptyForm(active.fields));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [form, setForm] = useState<Record<string, any>>(
+    buildEmptyForm(active.fields),
+  );
 
   const topTabs = useMemo<TopTab[]>(
     () => [
       { key: "about", label: "About Me" },
       ...resources
         .filter((res) => !aboutKeys.includes(res.key))
-        .map((res) => ({ key: res.key, label: res.label, resourceKey: res.key }))
+        .map((res) => ({
+          key: res.key,
+          label: res.label,
+          resourceKey: res.key,
+        })),
     ],
-    []
+    [],
   );
 
   const summaryFieldDefs = useMemo(() => {
@@ -255,27 +287,31 @@ export default function AdminPage() {
       .filter(Boolean) as FieldDef[];
   }, [active]);
 
-  const renderFieldValue = (field: FieldDef, value: any) => {
+  const renderFieldValue = (field: FieldDef, value: unknown) => {
     if (value === null || value === undefined || value === "") return "-";
     if (field.type === "bilingual") {
-      const en = value?.en?.trim();
-      const fr = value?.fr?.trim();
+      const val = value as Record<string, string> | undefined;
+      const en = val?.en?.trim();
+      const fr = val?.fr?.trim();
       if (en && fr) return `${en} / ${fr}`;
       return en || fr || "-";
     }
     if (field.type === "boolean") return value ? "Yes" : "No";
-    if (field.type === "array") return Array.isArray(value) ? value.join(", ") : "-";
+    if (field.type === "array")
+      return Array.isArray(value) ? value.join(", ") : "-";
     if (field.type === "date") {
-      const d = new Date(value);
+      const d = new Date(value as string);
       return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString();
     }
     if (field.type === "json") return "JSON";
     if (field.type === "image") {
       return value ? (
-        <img
-          src={value}
+        <Image
+          src={value as string}
           alt="Preview"
           className="h-12 w-20 rounded-lg border border-white/10 object-cover"
+          width={80}
+          height={48}
         />
       ) : (
         "-"
@@ -286,7 +322,8 @@ export default function AdminPage() {
   };
 
   const isAuthenticated = Boolean(user);
-  const isSpecialPanel = active.key === "testimonials" || active.key === "messages";
+  const isSpecialPanel =
+    active.key === "testimonials" || active.key === "messages";
 
   useEffect(() => {
     setForm(buildEmptyForm(active.fields));
@@ -299,9 +336,13 @@ export default function AdminPage() {
     try {
       const data = await apiFetch(active.path, {}, true);
       setItems(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load data");
-      setToast({ message: err?.message || "Failed to load data", type: "error" });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Failed to load data";
+      setError(errMsg);
+      setToast({
+        message: errMsg,
+        type: "error",
+      });
       setItems([]);
     } finally {
       setLoading(false);
@@ -311,11 +352,14 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isAuthenticated) return;
     if (!isSpecialPanel) loadItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, isAuthenticated, isSpecialPanel]);
 
-  const onEdit = (item: Record<string, any>) => {
-    setSelectedId(item.id);
-    setForm(normalizeItemToForm(active.fields, item));
+  const onEdit = (item: Record<string, unknown>) => {
+    setSelectedId(item.id as string);
+    setForm(
+      normalizeItemToForm(active.fields, item as Record<string, unknown>),
+    );
   };
 
   const onReset = () => {
@@ -328,17 +372,25 @@ export default function AdminPage() {
     setError(null);
     try {
       const payload = buildPayload(active.fields, form);
-      let saved: Record<string, any> | null = null;
+      let saved: Record<string, unknown> | null = null;
       if (selectedId) {
-        saved = await apiFetch(`${active.path}/${selectedId}`, {
-          method: "PUT",
-          body: JSON.stringify(payload)
-        }, true);
+        saved = await apiFetch(
+          `${active.path}/${selectedId}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          },
+          true,
+        );
       } else {
-        saved = await apiFetch(active.path, {
-          method: "POST",
-          body: JSON.stringify(payload)
-        }, true);
+        saved = await apiFetch(
+          active.path,
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          },
+          true,
+        );
       }
       if (saved) {
         setItems((prev) => {
@@ -352,8 +404,11 @@ export default function AdminPage() {
       await loadItems();
       onReset();
       setToast({ message: "Saved successfully.", type: "success" });
-    } catch (err: any) {
-      const issues = err?.issues as { path?: (string | number)[] }[] | undefined;
+    } catch (err: unknown) {
+      const errObj = err as Record<string, unknown> | null;
+      const issues = errObj?.issues as
+        | { path?: (string | number)[] }[]
+        | undefined;
       if (issues && issues.length) {
         const fields = issues
           .map((i) => (i.path || []).join("."))
@@ -362,11 +417,12 @@ export default function AdminPage() {
         setError("Please fill all required fields.");
         setToast({
           message: `Please fill all required fields: ${uniqueFields.join(", ")}`,
-          type: "error"
+          type: "error",
         });
       } else {
-        setError(err?.message || "Save failed");
-        setToast({ message: err?.message || "Save failed", type: "error" });
+        const errMsg = err instanceof Error ? err.message : "Save failed";
+        setError(errMsg);
+        setToast({ message: errMsg, type: "error" });
       }
     } finally {
       setLoading(false);
@@ -381,9 +437,10 @@ export default function AdminPage() {
       await loadItems();
       if (selectedId === id) onReset();
       setToast({ message: "Deleted successfully.", type: "success" });
-    } catch (err: any) {
-      setError(err?.message || "Delete failed");
-      setToast({ message: err?.message || "Delete failed", type: "error" });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Delete failed";
+      setError(errMsg);
+      setToast({ message: errMsg, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -408,6 +465,7 @@ export default function AdminPage() {
         </button>
       </div>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, selectedId]);
 
   if (isLoading) {
@@ -449,12 +507,12 @@ export default function AdminPage() {
       )}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <a
+          <Link
             href="/"
             className="px-4 py-2 rounded-full border border-white/40 text-white hover:border-white transition"
           >
             Back to Home
-          </a>
+          </Link>
           <h1 className="text-3xl font-extrabold">Admin Dashboard</h1>
         </div>
         <LogoutButton />
@@ -518,47 +576,52 @@ export default function AdminPage() {
                 Refresh
               </button>
             </div>
-          {error && <div className="text-red-300 mb-3">{error}</div>}
+            {error && <div className="text-red-300 mb-3">{error}</div>}
             {loading && <div className="text-white/70">Loading...</div>}
             {!loading && items.length === 0 && (
               <div className="text-white/60">No items yet.</div>
             )}
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-white/10 bg-black/40 p-4"
-                >
-                  <div className="text-xs text-white/50">ID: {item.id}</div>
-                  <div className="mt-3 grid gap-2 text-sm text-white/85">
-                    {summaryFieldDefs.map((field) => (
-                      <div
-                        key={field.name}
-                        className="flex items-start justify-between gap-4"
+              {items.map((item) => {
+                const typedItem = item as Record<string, unknown>;
+                return (
+                  <div
+                    key={typedItem.id as string}
+                    className="rounded-2xl border border-white/10 bg-black/40 p-4"
+                  >
+                    <div className="text-xs text-white/50">
+                      ID: {String(typedItem.id)}
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm text-white/85">
+                      {summaryFieldDefs.map((field) => (
+                        <div
+                          key={field.name}
+                          className="flex items-start justify-between gap-4"
+                        >
+                          <span className="text-white/50">{field.label}</span>
+                          <span className="text-right font-medium text-white/90">
+                            {renderFieldValue(field, typedItem[field.name])}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-3 mt-3">
+                      <button
+                        className="px-3 py-1 rounded-full bg-white text-black text-sm font-semibold"
+                        onClick={() => onEdit(typedItem)}
                       >
-                        <span className="text-white/50">{field.label}</span>
-                        <span className="text-right font-medium text-white/90">
-                          {renderFieldValue(field, item[field.name])}
-                        </span>
-                      </div>
-                    ))}
+                        Edit
+                      </button>
+                      <button
+                        className="px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
+                        onClick={() => onDelete(typedItem.id as string)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-3 mt-3">
-                    <button
-                      className="px-3 py-1 rounded-full bg-white text-black text-sm font-semibold"
-                      onClick={() => onEdit(item)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
-                      onClick={() => onDelete(item.id)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -572,13 +635,13 @@ export default function AdminPage() {
                   key={field.name}
                   field={field}
                   value={form[field.name]}
-                  onChange={(val) => setForm((prev) => ({ ...prev, [field.name]: val }))}
+                  onChange={(val) =>
+                    setForm((prev) => ({ ...prev, [field.name]: val }))
+                  }
                 />
               ))}
             </div>
-            <div className="mt-6 flex items-center gap-3">
-              {adminActions}
-            </div>
+            <div className="mt-6 flex items-center gap-3">{adminActions}</div>
           </div>
         </div>
       )}
@@ -592,31 +655,34 @@ export default function AdminPage() {
 function FieldInput({
   field,
   value,
-  onChange
+  onChange,
 }: {
   field: FieldDef;
-  value: any;
-  onChange: (val: any) => void;
+  value: unknown;
+  onChange: (val: unknown) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   if (field.type === "bilingual") {
+    const bilingual = (value ?? emptyBilingual) as Record<string, string>;
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">{field.label}</label>
+        <label className="text-sm font-semibold text-white/80">
+          {field.label}
+        </label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
             className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
             placeholder="English"
-            value={value?.en || ""}
-            onChange={(e) => onChange({ ...value, en: e.target.value })}
+            value={bilingual?.en || ""}
+            onChange={(e) => onChange({ ...bilingual, en: e.target.value })}
           />
           <input
             className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
             placeholder="French"
-            value={value?.fr || ""}
-            onChange={(e) => onChange({ ...value, fr: e.target.value })}
+            value={bilingual?.fr || ""}
+            onChange={(e) => onChange({ ...bilingual, fr: e.target.value })}
           />
         </div>
       </div>
@@ -626,10 +692,12 @@ function FieldInput({
   if (field.type === "textarea") {
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">{field.label}</label>
+        <label className="text-sm font-semibold text-white/80">
+          {field.label}
+        </label>
         <textarea
           className="rounded-xl bg-black/40 border border-white/20 px-3 py-2 min-h-[120px]"
-          value={value || ""}
+          value={(value ?? "") as string}
           onChange={(e) => onChange(e.target.value)}
         />
       </div>
@@ -652,11 +720,13 @@ function FieldInput({
   if (field.type === "date") {
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">{field.label}</label>
+        <label className="text-sm font-semibold text-white/80">
+          {field.label}
+        </label>
         <input
           type="datetime-local"
           className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
-          value={value || ""}
+          value={(value ?? "") as string}
           onChange={(e) => onChange(e.target.value)}
         />
       </div>
@@ -666,10 +736,12 @@ function FieldInput({
   if (field.type === "json") {
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">{field.label}</label>
+        <label className="text-sm font-semibold text-white/80">
+          {field.label}
+        </label>
         <textarea
           className="rounded-xl bg-black/40 border border-white/20 px-3 py-2 min-h-[120px] font-mono text-xs"
-          value={value || "{}"}
+          value={(value ?? "{}") as string}
           onChange={(e) => onChange(e.target.value)}
         />
       </div>
@@ -688,21 +760,24 @@ function FieldInput({
         const res = await fetch(`${API_BASE_URL}/admin/uploads`, {
           method: "POST",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-          body: formData
+          body: formData,
         });
         if (!res.ok) {
           const contentType = res.headers.get("content-type") || "";
           if (contentType.includes("application/json")) {
             const json = await res.json();
-            throw new Error(json?.error?.message || json?.message || "Upload failed");
+            throw new Error(
+              json?.error?.message || json?.message || "Upload failed",
+            );
           }
           const text = await res.text();
           throw new Error(text || "Upload failed");
         }
         const data = await res.json();
         onChange(data.url);
-      } catch (err: any) {
-        setUploadError(err?.message || "Upload failed");
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : "Upload failed";
+        setUploadError(errMsg);
       } finally {
         setUploading(false);
       }
@@ -710,7 +785,9 @@ function FieldInput({
 
     return (
       <div className="grid gap-3">
-        <label className="text-sm font-semibold text-white/80">{field.label}</label>
+        <label className="text-sm font-semibold text-white/80">
+          {field.label}
+        </label>
         <div className="flex flex-col gap-2">
           <label className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 hover:border-white/60 hover:bg-white/20 transition cursor-pointer w-fit">
             Upload Image
@@ -724,18 +801,26 @@ function FieldInput({
           <input
             className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
             placeholder="Image URL"
-            value={value ?? ""}
+            value={(value as string) ?? ""}
             onChange={(e) => onChange(e.target.value)}
           />
-          {value && (
-            <img
-              src={value}
-              alt="Preview"
-              className="rounded-xl border border-white/10 max-h-40 object-cover"
-            />
+          {value ? (
+            <div>
+              <Image
+                src={value as string}
+                alt="Preview"
+                className="rounded-xl border border-white/10 max-h-40 object-cover"
+                width={400}
+                height={160}
+              />
+            </div>
+          ) : null}
+          {uploading && (
+            <div className="text-xs text-white/60">Uploading...</div>
           )}
-          {uploading && <div className="text-xs text-white/60">Uploading...</div>}
-          {uploadError && <div className="text-xs text-red-300">{uploadError}</div>}
+          {uploadError && (
+            <div className="text-xs text-red-300">{uploadError}</div>
+          )}
         </div>
       </div>
     );
@@ -745,12 +830,14 @@ function FieldInput({
 
   return (
     <div className="grid gap-2">
-      <label className="text-sm font-semibold text-white/80">{field.label}</label>
+      <label className="text-sm font-semibold text-white/80">
+        {field.label}
+      </label>
       <input
         type={type}
         className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
         placeholder={field.placeholder}
-        value={value ?? ""}
+        value={(value ?? "") as string}
         onChange={(e) => onChange(e.target.value)}
       />
     </div>
@@ -758,7 +845,7 @@ function FieldInput({
 }
 
 function TestimonialsPanel() {
-  const [items, setItems] = useState<Record<string, any>[]>([]);
+  const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -768,8 +855,10 @@ function TestimonialsPanel() {
     try {
       const data = await apiFetch("/admin/testimonials", {}, true);
       setItems(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load testimonials");
+    } catch (err: unknown) {
+      const errMsg =
+        err instanceof Error ? err.message : "Failed to load testimonials";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -782,10 +871,15 @@ function TestimonialsPanel() {
   const updateStatus = async (id: string, action: "approve" | "reject") => {
     setLoading(true);
     try {
-      await apiFetch(`/admin/testimonials/${id}/${action}`, { method: "POST" }, true);
+      await apiFetch(
+        `/admin/testimonials/${id}/${action}`,
+        { method: "POST" },
+        true,
+      );
       await load();
-    } catch (err: any) {
-      setError(err?.message || "Action failed");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Action failed";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -796,8 +890,9 @@ function TestimonialsPanel() {
     try {
       await apiFetch(`/admin/testimonials/${id}`, { method: "DELETE" }, true);
       await load();
-    } catch (err: any) {
-      setError(err?.message || "Delete failed");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Delete failed";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -807,53 +902,73 @@ function TestimonialsPanel() {
     <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Testimonials</h2>
-        <button className="text-sm text-white/70 hover:text-white" onClick={load}>
+        <button
+          className="text-sm text-white/70 hover:text-white"
+          onClick={load}
+        >
           Refresh
         </button>
       </div>
       {error && <div className="text-red-300 mb-3">{error}</div>}
       {loading && <div className="text-white/70">Loading...</div>}
-      {!loading && items.length === 0 && <div className="text-white/60">No testimonials.</div>}
+      {!loading && items.length === 0 && (
+        <div className="text-white/60">No testimonials.</div>
+      )}
       <div className="space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-semibold">{item.name}</div>
-                <div className="text-xs text-white/60">{item.role || ""} {item.company || ""}</div>
+        {items.map((item) => {
+          const typedItem = item as Record<string, unknown>;
+          return (
+            <div
+              key={typedItem.id as string}
+              className="rounded-2xl border border-white/10 bg-black/40 p-4"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold">{String(typedItem.name)}</div>
+                  <div className="text-xs text-white/60">
+                    {String(typedItem.role || "")}{" "}
+                    {String(typedItem.company || "")}
+                  </div>
+                </div>
+                <div className="text-xs text-white/70">
+                  {String(typedItem.status)}
+                </div>
               </div>
-              <div className="text-xs text-white/70">{item.status}</div>
+              <p className="text-sm text-white/80 mt-2">
+                {String(typedItem.content)}
+              </p>
+              <div className="flex gap-3 mt-3">
+                <button
+                  className="px-3 py-1 rounded-full bg-white text-black text-sm font-semibold"
+                  onClick={() =>
+                    updateStatus(typedItem.id as string, "approve")
+                  }
+                >
+                  Approve
+                </button>
+                <button
+                  className="px-3 py-1 rounded-full border border-white/40 text-white text-sm"
+                  onClick={() => updateStatus(typedItem.id as string, "reject")}
+                >
+                  Reject
+                </button>
+                <button
+                  className="px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
+                  onClick={() => onDelete(typedItem.id as string)}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-            <p className="text-sm text-white/80 mt-2">{item.content}</p>
-            <div className="flex gap-3 mt-3">
-              <button
-                className="px-3 py-1 rounded-full bg-white text-black text-sm font-semibold"
-                onClick={() => updateStatus(item.id, "approve")}
-              >
-                Approve
-              </button>
-              <button
-                className="px-3 py-1 rounded-full border border-white/40 text-white text-sm"
-                onClick={() => updateStatus(item.id, "reject")}
-              >
-                Reject
-              </button>
-              <button
-                className="px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
-                onClick={() => onDelete(item.id)}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function MessagesPanel() {
-  const [items, setItems] = useState<Record<string, any>[]>([]);
+  const [items, setItems] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -863,8 +978,10 @@ function MessagesPanel() {
     try {
       const data = await apiFetch("/admin/messages", {}, true);
       setItems(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(err?.message || "Failed to load messages");
+    } catch (err: unknown) {
+      const errMsg =
+        err instanceof Error ? err.message : "Failed to load messages";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -879,8 +996,9 @@ function MessagesPanel() {
     try {
       await apiFetch(`/admin/messages/${id}`, { method: "DELETE" }, true);
       await load();
-    } catch (err: any) {
-      setError(err?.message || "Delete failed");
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : "Delete failed";
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -890,27 +1008,44 @@ function MessagesPanel() {
     <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Contact Messages</h2>
-        <button className="text-sm text-white/70 hover:text-white" onClick={load}>
+        <button
+          className="text-sm text-white/70 hover:text-white"
+          onClick={load}
+        >
           Refresh
         </button>
       </div>
       {error && <div className="text-red-300 mb-3">{error}</div>}
       {loading && <div className="text-white/70">Loading...</div>}
-      {!loading && items.length === 0 && <div className="text-white/60">No messages.</div>}
+      {!loading && items.length === 0 && (
+        <div className="text-white/60">No messages.</div>
+      )}
       <div className="space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="rounded-2xl border border-white/10 bg-black/40 p-4">
-            <div className="font-semibold">{item.name} ? {item.email}</div>
-            <div className="text-xs text-white/60">{item.subject || "(No subject)"}</div>
-            <p className="text-sm text-white/80 mt-2">{item.message}</p>
-            <button
-              className="mt-3 px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
-              onClick={() => onDelete(item.id)}
+        {items.map((item) => {
+          const typedItem = item as Record<string, unknown>;
+          return (
+            <div
+              key={typedItem.id as string}
+              className="rounded-2xl border border-white/10 bg-black/40 p-4"
             >
-              Delete
-            </button>
-          </div>
-        ))}
+              <div className="font-semibold">
+                {String(typedItem.name)} ? {String(typedItem.email)}
+              </div>
+              <div className="text-xs text-white/60">
+                {(typedItem.subject as string) || "(No subject)"}
+              </div>
+              <p className="text-sm text-white/80 mt-2">
+                {String(typedItem.message)}
+              </p>
+              <button
+                className="mt-3 px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
+                onClick={() => onDelete(typedItem.id as string)}
+              >
+                Delete
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
