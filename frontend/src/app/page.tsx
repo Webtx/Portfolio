@@ -76,6 +76,15 @@ type Hobby = {
   description?: BilingualText | null;
 };
 
+type Testimonial = {
+  id: string;
+  name: string;
+  role?: string | null;
+  company?: string | null;
+  content: string;
+  createdAt: string;
+};
+
 const iconMap: Record<string, IconType> = {
   javascript: SiJavascript,
   js: SiJavascript,
@@ -203,6 +212,23 @@ export default function Home() {
   const [education, setEducation] = useState<Education[]>([]);
   const [hobbies, setHobbies] = useState<Hobby[]>([]);
   const [loadingAbout, setLoadingAbout] = useState(false);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [loadingTestimonials, setLoadingTestimonials] = useState(false);
+  const [testimonialNotice, setTestimonialNotice] = useState("");
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactMessage, setContactMessage] = useState("");
+  const [contactStatus, setContactStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
+  const [contactNotice, setContactNotice] = useState("");
+  const [showTestimonialForm, setShowTestimonialForm] = useState(false);
+  const [testimonialName, setTestimonialName] = useState("");
+  const [testimonialContent, setTestimonialContent] = useState("");
+  const [testimonialStatus, setTestimonialStatus] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
 
   const loadAbout = async () => {
     setLoadingAbout(true);
@@ -231,6 +257,80 @@ export default function Home() {
   useEffect(() => {
     loadAbout();
   }, []);
+
+  const loadTestimonials = async () => {
+    setLoadingTestimonials(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/public/testimonials`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      setTestimonials(Array.isArray(data) ? data : []);
+    } finally {
+      setLoadingTestimonials(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTestimonials();
+  }, []);
+
+  const submitTestimonial = async () => {
+    if (!testimonialName.trim() || !testimonialContent.trim()) {
+      setTestimonialStatus("error");
+      return;
+    }
+    setTestimonialStatus("submitting");
+    setTestimonialNotice("");
+    try {
+      await fetch(`${API_BASE_URL}/public/testimonials`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: testimonialName.trim(),
+          content: testimonialContent.trim(),
+        }),
+      });
+      setTestimonialStatus("success");
+      setTestimonialName("");
+      setTestimonialContent("");
+      setShowTestimonialForm(false);
+      setTestimonialNotice(
+        "Thanks! Your testimonial is submitted for approval.",
+      );
+      loadTestimonials();
+    } catch {
+      setTestimonialStatus("error");
+    }
+  };
+
+  const submitContact = async () => {
+    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) {
+      setContactStatus("error");
+      return;
+    }
+    setContactStatus("submitting");
+    setContactNotice("");
+    try {
+      await fetch(`${API_BASE_URL}/public/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: contactName.trim(),
+          email: contactEmail.trim(),
+          message: contactMessage.trim(),
+        }),
+      });
+      setContactStatus("success");
+      setContactName("");
+      setContactEmail("");
+      setContactMessage("");
+      setShowContactForm(false);
+      setContactNotice("Message sent! I will get back to you soon.");
+    } catch {
+      setContactStatus("error");
+    }
+  };
 
   return (
     <>
@@ -343,7 +443,7 @@ export default function Home() {
                 }}
               >
                 <CircularText
-                  text="helloo"
+                  text="★★★★★★"
                   spinDuration={50}
                   onHover="speedUp"
                 />
@@ -360,8 +460,21 @@ export default function Home() {
               <div className="profile-name-section">
                 <div className="profile-name-row">
                   <h1 className="profile-name">{user?.name || "Annie Yang"}</h1>
-                  <button className="get-in-touch-btn">Get in Touch</button>
+                  <button
+                    className="get-in-touch-btn"
+                    onClick={() => {
+                      setContactStatus("idle");
+                      setShowContactForm(true);
+                    }}
+                  >
+                    Get in Touch
+                  </button>
                 </div>
+                {contactNotice && (
+                  <p style={{ marginTop: "0.6rem", color: "#d8f3dc" }}>
+                    {contactNotice}
+                  </p>
+                )}
                 <p className="profile-role">Full-stack Developer</p>
               </div>
             </div>
@@ -543,44 +656,54 @@ export default function Home() {
                                 borderRadius: "16px",
                                 background: "rgba(255, 255, 255, 0.05)",
                                 border: "1px solid rgba(255, 255, 255, 0.12)",
+                                display: "flex",
+                                alignItems: "flex-start",
                               }}
                             >
-                              <div style={{ fontWeight: 700 }}>
-                                {
-                                  (exp.role?.[lang] ||
-                                    exp.role?.en ||
-                                    "Role") as string
-                                }{" "}
-                                -{" "}
-                                {
-                                  (exp.company?.[lang] ||
-                                    exp.company?.en ||
-                                    "Company") as string
-                                }
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 700 }}>
+                                  {
+                                    (exp.role?.[lang] ||
+                                      exp.role?.en ||
+                                      "Role") as string
+                                  }{" "}
+                                  -{" "}
+                                  {
+                                    (exp.company?.[lang] ||
+                                      exp.company?.en ||
+                                      "Company") as string
+                                  }
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: "0.85rem",
+                                    color: "#e0e0e0",
+                                  }}
+                                >
+                                  {new Date(exp.startDate).toLocaleDateString(
+                                    lang === "en" ? "en-US" : "fr-FR",
+                                    { month: "short", year: "numeric" },
+                                  )}{" "}
+                                  {exp.isCurrent
+                                    ? "- Present"
+                                    : new Date(exp.endDate!).toLocaleDateString(
+                                        lang === "en" ? "en-US" : "fr-FR",
+                                        { month: "short", year: "numeric" },
+                                      )}
+                                </div>
+                                <p
+                                  style={{
+                                    marginTop: "0.5rem",
+                                    color: "#e0e0e0",
+                                  }}
+                                >
+                                  {
+                                    (exp.description?.[lang] ||
+                                      exp.description?.en ||
+                                      "") as string
+                                  }
+                                </p>
                               </div>
-                              <div
-                                style={{
-                                  fontSize: "0.85rem",
-                                  color: "#e0e0e0",
-                                }}
-                              >
-                                {exp.startDate?.slice(0, 10)}{" "}
-                                {exp.isCurrent
-                                  ? "- Present"
-                                  : exp.endDate?.slice(0, 10)}
-                              </div>
-                              <p
-                                style={{
-                                  marginTop: "0.5rem",
-                                  color: "#e0e0e0",
-                                }}
-                              >
-                                {
-                                  (exp.description?.[lang] ||
-                                    exp.description?.en ||
-                                    "") as string
-                                }
-                              </p>
                             </div>
                           ))}
                           {experiences.length === 0 && (
@@ -829,44 +952,430 @@ export default function Home() {
 
               {activeTab === "testimonials" && (
                 <div>
-                  <h2 style={{ fontSize: "1.8rem", marginBottom: "1.5rem" }}>
-                    Testimonials
-                  </h2>
                   <div
                     style={{
-                      padding: "1.5rem",
-                      background: "rgba(255, 255, 255, 0.08)",
-                      borderRadius: "12px",
-                      borderLeft: "4px solid #ffffff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "1rem",
+                      marginBottom: "1.5rem",
                     }}
                   >
-                    <p
+                    <h2 style={{ fontSize: "1.8rem", margin: 0 }}>
+                      Testimonials
+                    </h2>
+                    <button
                       style={{
-                        margin: 0,
-                        color: "#e0e0e0",
-                        fontSize: "0.95rem",
-                        lineHeight: "1.8",
+                        width: "38px",
+                        height: "38px",
+                        borderRadius: "50%",
+                        background: "#ffffff",
+                        color: "#0a0a0a",
+                        border: "none",
+                        fontWeight: 700,
+                        fontSize: "1.3rem",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        lineHeight: 1,
+                      }}
+                      aria-label="Add testimonial"
+                      onClick={() => {
+                        setTestimonialStatus("idle");
+                        setShowTestimonialForm(true);
                       }}
                     >
-                      &quot;Great developer to work with. Delivered on time and
-                      exceeded expectations.&quot;
-                    </p>
-                    <p
-                      style={{
-                        margin: "1rem 0 0 0",
-                        color: "#ffffff",
-                        fontWeight: "600",
-                      }}
-                    >
-                      Client Name
-                    </p>
+                      +
+                    </button>
                   </div>
+                  {testimonialNotice && (
+                    <div
+                      style={{
+                        padding: "0.9rem 1rem",
+                        background: "rgba(255, 255, 255, 0.08)",
+                        borderRadius: "10px",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        marginBottom: "1.2rem",
+                        color: "#f2f2f2",
+                      }}
+                    >
+                      {testimonialNotice}
+                    </div>
+                  )}
+
+                  {loadingTestimonials ? (
+                    <p style={{ color: "#d7d7d7" }}>Loading testimonials...</p>
+                  ) : testimonials.length === 0 ? (
+                    <p style={{ color: "#d7d7d7" }}>
+                      No approved testimonials yet. New submissions appear after
+                      approval.
+                    </p>
+                  ) : (
+                    <div style={{ display: "grid", gap: "1rem" }}>
+                      {testimonials.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            padding: "1.5rem",
+                            background: "rgba(255, 255, 255, 0.08)",
+                            borderRadius: "12px",
+                            borderLeft: "4px solid #ffffff",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.75rem",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: "38px",
+                                height: "38px",
+                                borderRadius: "50%",
+                                background: "rgba(255,255,255,0.18)",
+                                color: "#ffffff",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontWeight: 700,
+                                fontSize: "0.95rem",
+                              }}
+                              aria-label={`Avatar for ${item.name}`}
+                            >
+                              {(() => {
+                                const parts = item.name
+                                  ? item.name.trim().split(/\s+/)
+                                  : [];
+                                if (parts.length === 0) return "?";
+                                const first = parts[0]?.[0] || "";
+                                const last =
+                                  parts.length > 1
+                                    ? parts[parts.length - 1]?.[0] || ""
+                                    : "";
+                                return `${first}${last}`.toUpperCase();
+                              })()}
+                            </div>
+                            <div>
+                              <p
+                                style={{
+                                  margin: 0,
+                                  color: "#ffffff",
+                                  fontWeight: "600",
+                                }}
+                              >
+                                {item.name}
+                              </p>
+                              <p
+                                style={{
+                                  margin: "0.35rem 0 0 0",
+                                  color: "#cfcfcf",
+                                  fontSize: "0.85rem",
+                                }}
+                              >
+                                {new Date(item.createdAt).toLocaleDateString(
+                                  lang === "fr" ? "fr-CA" : "en-US",
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  }
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <p
+                            style={{
+                              margin: "0.9rem 0 0 0",
+                              color: "#e0e0e0",
+                              fontSize: "0.95rem",
+                              lineHeight: "1.8",
+                            }}
+                          >
+                            {item.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {showContactForm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1.5rem",
+            zIndex: 200,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              background: "#0b0b0b",
+              borderRadius: "16px",
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+              padding: "1.5rem",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: "1.3rem" }}>Get in Touch</h3>
+              <button
+                onClick={() => setShowContactForm(false)}
+                style={{
+                  background: "transparent",
+                  color: "#ffffff",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: "0.9rem" }}>
+              <input
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="Name"
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  borderRadius: "10px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#ffffff",
+                }}
+              />
+              <input
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="Email"
+                type="email"
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  borderRadius: "10px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#ffffff",
+                }}
+              />
+              <textarea
+                value={contactMessage}
+                onChange={(e) => setContactMessage(e.target.value)}
+                placeholder="Message"
+                rows={5}
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  borderRadius: "10px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#ffffff",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            {contactStatus === "error" && (
+              <p style={{ color: "#ff9b9b", marginTop: "0.8rem" }}>
+                Please fill out name, email, and message.
+              </p>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+                marginTop: "1.2rem",
+              }}
+            >
+              <button
+                onClick={() => setShowContactForm(false)}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  background: "transparent",
+                  color: "#ffffff",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitContact}
+                disabled={contactStatus === "submitting"}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  background: "#ffffff",
+                  color: "#0a0a0a",
+                  borderRadius: "999px",
+                  border: "none",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  opacity: contactStatus === "submitting" ? 0.7 : 1,
+                }}
+              >
+                {contactStatus === "submitting" ? "Sending..." : "Send"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTestimonialForm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1.5rem",
+            zIndex: 200,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              background: "#0b0b0b",
+              borderRadius: "16px",
+              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+              padding: "1.5rem",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "1rem",
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: "1.3rem" }}>
+                Share a testimonial
+              </h3>
+              <button
+                onClick={() => setShowTestimonialForm(false)}
+                style={{
+                  background: "transparent",
+                  color: "#ffffff",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                }}
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: "0.9rem" }}>
+              <input
+                value={testimonialName}
+                onChange={(e) => setTestimonialName(e.target.value)}
+                placeholder="Your name"
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  borderRadius: "10px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#ffffff",
+                }}
+              />
+              <textarea
+                value={testimonialContent}
+                onChange={(e) => setTestimonialContent(e.target.value)}
+                placeholder="Your comment"
+                rows={5}
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  borderRadius: "10px",
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#ffffff",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            {testimonialStatus === "error" && (
+              <p style={{ color: "#ff9b9b", marginTop: "0.8rem" }}>
+                Please enter your name and comment.
+              </p>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "0.75rem",
+                marginTop: "1.2rem",
+              }}
+            >
+              <button
+                onClick={() => setShowTestimonialForm(false)}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  background: "transparent",
+                  color: "#ffffff",
+                  borderRadius: "999px",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitTestimonial}
+                disabled={testimonialStatus === "submitting"}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  background: "#ffffff",
+                  color: "#0a0a0a",
+                  borderRadius: "999px",
+                  border: "none",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  opacity: testimonialStatus === "submitting" ? 0.7 : 1,
+                }}
+              >
+                {testimonialStatus === "submitting" ? "Sending..." : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -28,6 +28,13 @@ type ResourceDef = {
   label: string;
   path: string;
   fields: FieldDef[];
+  summaryFields?: string[];
+};
+
+type TopTab = {
+  key: string;
+  label: string;
+  resourceKey?: string;
 };
 
 const resources: ResourceDef[] = [
@@ -40,7 +47,8 @@ const resources: ResourceDef[] = [
       { name: "level", label: "Level (1-10)", type: "number" },
       { name: "category", label: "Category", type: "bilingual" },
       { name: "order", label: "Order", type: "number" }
-    ]
+    ],
+    summaryFields: ["name", "category", "level", "order"]
   },
   {
     key: "projects",
@@ -55,7 +63,8 @@ const resources: ResourceDef[] = [
       { name: "techStack", label: "Tech Stack (comma separated)", type: "array" },
       { name: "featured", label: "Featured", type: "boolean" },
       { name: "order", label: "Order", type: "number" }
-    ]
+    ],
+    summaryFields: ["title", "url", "featured", "order"]
   },
   {
     key: "experiences",
@@ -70,7 +79,8 @@ const resources: ResourceDef[] = [
       { name: "isCurrent", label: "Current Role", type: "boolean" },
       { name: "location", label: "Location", type: "bilingual" },
       { name: "order", label: "Order", type: "number" }
-    ]
+    ],
+    summaryFields: ["role", "company", "startDate", "endDate", "isCurrent"]
   },
   {
     key: "education",
@@ -84,7 +94,8 @@ const resources: ResourceDef[] = [
       { name: "startDate", label: "Start Date", type: "date" },
       { name: "endDate", label: "End Date", type: "date" },
       { name: "order", label: "Order", type: "number" }
-    ]
+    ],
+    summaryFields: ["school", "degree", "startDate", "endDate"]
   },
   {
     key: "resumes",
@@ -94,7 +105,8 @@ const resources: ResourceDef[] = [
       { name: "title", label: "Title", type: "bilingual" },
       { name: "fileUrl", label: "File URL", type: "text" },
       { name: "isActive", label: "Active", type: "boolean" }
-    ]
+    ],
+    summaryFields: ["title", "isActive", "fileUrl"]
   },
   {
     key: "contact-info",
@@ -106,7 +118,8 @@ const resources: ResourceDef[] = [
       { name: "location", label: "Location", type: "bilingual" },
       { name: "website", label: "Website", type: "text" },
       { name: "socials", label: "Socials (JSON)", type: "json" }
-    ]
+    ],
+    summaryFields: ["email", "phone", "location", "website"]
   },
   {
     key: "hobbies",
@@ -116,7 +129,8 @@ const resources: ResourceDef[] = [
       { name: "name", label: "Name", type: "bilingual" },
       { name: "description", label: "Description", type: "bilingual" },
       { name: "order", label: "Order", type: "number" }
-    ]
+    ],
+    summaryFields: ["name", "order"]
   },
   {
     key: "testimonials",
@@ -131,6 +145,9 @@ const resources: ResourceDef[] = [
     fields: []
   }
 ];
+
+const aboutKeys = ["skills", "experiences", "education", "hobbies"];
+const defaultAboutKey = "skills";
 
 const dateToInput = (value?: string) => {
   if (!value) return "";
@@ -210,13 +227,49 @@ function buildPayload(fields: FieldDef[], form: Record<string, any>) {
 
 export default function AdminPage() {
   const { user, isLoading } = useUser();
-  const [active, setActive] = useState<ResourceDef>(resources[0]);
+  const getResourceByKey = (key: string) =>
+    resources.find((res) => res.key === key) || resources[0];
+  const [activeGroup, setActiveGroup] = useState<"about" | "general">("about");
+  const [active, setActive] = useState<ResourceDef>(getResourceByKey(defaultAboutKey));
   const [items, setItems] = useState<Record<string, any>[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "error" | "success" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<Record<string, any>>(buildEmptyForm(active.fields));
+
+  const topTabs = useMemo<TopTab[]>(
+    () => [
+      { key: "about", label: "About Me" },
+      ...resources
+        .filter((res) => !aboutKeys.includes(res.key))
+        .map((res) => ({ key: res.key, label: res.label, resourceKey: res.key }))
+    ],
+    []
+  );
+
+  const summaryFieldDefs = useMemo(() => {
+    const names = active.summaryFields ?? active.fields.map((f) => f.name);
+    return names
+      .map((name) => active.fields.find((f) => f.name === name))
+      .filter(Boolean) as FieldDef[];
+  }, [active]);
+
+  const renderFieldValue = (field: FieldDef, value: any) => {
+    if (value === null || value === undefined || value === "") return "—";
+    if (field.type === "bilingual") {
+      return value?.en || value?.fr || "—";
+    }
+    if (field.type === "boolean") return value ? "Yes" : "No";
+    if (field.type === "array") return Array.isArray(value) ? value.join(", ") : "—";
+    if (field.type === "date") {
+      const d = new Date(value);
+      return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+    }
+    if (field.type === "json") return "[JSON]";
+    const text = String(value);
+    return text.length > 120 ? `${text.slice(0, 120)}…` : text;
+  };
 
   const isAuthenticated = Boolean(user);
   const isSpecialPanel = active.key === "testimonials" || active.key === "messages";
@@ -383,21 +436,51 @@ export default function AdminPage() {
         <LogoutButton />
       </div>
 
-      <div className="flex gap-3 flex-wrap mb-8">
-        {resources.map((res) => (
+      <div className="flex gap-3 flex-wrap mb-4">
+        {topTabs.map((tab) => (
           <button
-            key={res.key}
+            key={tab.key}
             className={`px-4 py-2 rounded-full font-bold transition border ${
-              active.key === res.key
+              (tab.key === "about" && activeGroup === "about") ||
+              (tab.resourceKey && active.key === tab.resourceKey)
                 ? "bg-white text-black border-white"
                 : "bg-white/10 text-white border-white/20 hover:border-white/70"
             }`}
-            onClick={() => setActive(res)}
+            onClick={() => {
+              if (tab.key === "about") {
+                setActiveGroup("about");
+                setActive(getResourceByKey(defaultAboutKey));
+                return;
+              }
+              setActiveGroup("general");
+              if (tab.resourceKey) setActive(getResourceByKey(tab.resourceKey));
+            }}
           >
-            {res.label}
+            {tab.label}
           </button>
         ))}
       </div>
+
+      {activeGroup === "about" && (
+        <div className="flex gap-3 flex-wrap mb-8">
+          {aboutKeys.map((key) => {
+            const res = getResourceByKey(key);
+            return (
+              <button
+                key={key}
+                className={`px-3 py-2 rounded-full text-sm font-semibold transition border ${
+                  active.key === key
+                    ? "bg-white text-black border-white"
+                    : "bg-white/10 text-white border-white/20 hover:border-white/70"
+                }`}
+                onClick={() => setActive(res)}
+              >
+                {res.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {!isSpecialPanel && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -422,10 +505,20 @@ export default function AdminPage() {
                   key={item.id}
                   className="rounded-2xl border border-white/10 bg-black/40 p-4"
                 >
-                  <div className="text-sm text-white/60">ID: {item.id}</div>
-                  <pre className="text-xs text-white/80 mt-2 whitespace-pre-wrap">
-                    {JSON.stringify(item, null, 2)}
-                  </pre>
+                  <div className="text-xs text-white/50">ID: {item.id}</div>
+                  <div className="mt-3 grid gap-2 text-sm text-white/85">
+                    {summaryFieldDefs.map((field) => (
+                      <div
+                        key={field.name}
+                        className="flex items-start justify-between gap-4"
+                      >
+                        <span className="text-white/50">{field.label}</span>
+                        <span className="text-right font-medium text-white/90">
+                          {renderFieldValue(field, item[field.name])}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                   <div className="flex gap-3 mt-3">
                     <button
                       className="px-3 py-1 rounded-full bg-white text-black text-sm font-semibold"
