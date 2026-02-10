@@ -1,12 +1,11 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import AOS from "aos";
 import Image from "next/image";
-import { useUser } from "@auth0/nextjs-auth0/client";
 import LoginButton from "@/components/auth/LoginButton";
 import LogoutButton from "@/components/auth/LogoutButton";
-import CircularText from "@/components/CircularText";
-import { API_BASE_URL } from "@/lib/api";
+import { API_BASE_URL, getAccessToken } from "@/lib/api";
 import {
   SiJavascript,
   SiTypescript,
@@ -36,7 +35,7 @@ import {
   SiSwift,
   SiDocker,
 } from "react-icons/si";
-import { FaJava, FaDatabase, FaHashtag } from "react-icons/fa";
+import { FaJava, FaDatabase, FaHashtag, FaGithub, FaLinkedin, FaFilePdf } from "react-icons/fa";
 import { IconType } from "react-icons";
 
 type TabType = "about" | "projects" | "testimonials";
@@ -66,6 +65,7 @@ type Project = {
   description: BilingualText;
   imageUrl?: string | null;
   repoUrl?: string | null;
+  url?: string | null;
   techStack?: string[] | null;
   featured?: boolean | null;
 };
@@ -93,6 +93,11 @@ type Testimonial = {
   company?: string | null;
   content: string;
   createdAt: string;
+};
+
+type Resume = {
+  fileUrlEn: string;
+  fileUrlFr: string;
 };
 
 const iconMap: Record<string, IconType> = {
@@ -201,6 +206,48 @@ function normalizeSkillKey(name?: string) {
     .replace(/[\s.]/g, "");
 }
 
+const skillIconFileMap: Record<string, string> = {
+  next: "next.svg",
+  nextjs: "next.svg",
+  react: "react.svg",
+  reactjs: "react.svg",
+  typescript: "ts.svg",
+  ts: "ts.svg",
+  javascript: "js.svg",
+  js: "js.svg",
+  html: "html.svg",
+  html5: "html.svg",
+  css: "css.svg",
+  css3: "css.svg",
+  tailwind: "tailwindcss.svg",
+  tailwindcss: "tailwindcss.svg",
+  node: "node.svg",
+  nodejs: "node.svg",
+  express: "express.svg",
+  mongodb: "mongodb.svg",
+  sqlite: "sqlite.svg",
+  docker: "docker.svg",
+  git: "git.svg",
+  github: "github.svg",
+  linux: "linux.svg",
+  python: "python.svg",
+  figma: "figma.svg",
+  postman: "postman.svg",
+  cloudflare: "cloudflare.svg",
+  workers: "workers.svg",
+  bun: "bun.svg",
+  redis: "redis.svg",
+  zod: "zod.svg",
+  deno: "deno.svg",
+  digitalocean: "digitalocean.svg",
+};
+
+function getSkillIconFile(name?: string) {
+  if (!name) return null;
+  const key = normalizeSkillKey(name);
+  return skillIconFileMap[key] || null;
+}
+
 function getSkillIcon(name?: string) {
   if (!name) return null;
   const key = normalizeSkillKey(name);
@@ -214,7 +261,7 @@ function getSkillIconColor(name?: string) {
 }
 
 export default function Home() {
-  const { user } = useUser();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("about");
   const [lang, setLang] = useState<"en" | "fr">("en");
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -241,6 +288,108 @@ export default function Home() {
   const [testimonialStatus, setTestimonialStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
+  const [resume, setResume] = useState<Resume | null>(null);
+  const summary = {
+    en: "Hello, I'm Annie. I like designing and building clean, user-friendly experiences, and I enjoy artistic projects that blend creativity with technology.",
+    fr: "Bonjour, je m'appelle Annie. J'aime concevoir et créer des expériences claires et conviviales, et j'apprécie les projets artistiques qui allient créativité et technologie.",
+  };
+  const ui = {
+    en: {
+      admin: "Admin Dashboard",
+      aboutMe: "About Me",
+      projects: "Projects",
+      testimonials: "Testimonials",
+      myProjects: "My Projects",
+      loadingProfile: "Loading your profile...",
+      loadingProjects: "Loading projects...",
+      loadingTestimonials: "Loading testimonials...",
+      noSkills: "No skills yet.",
+      noExperience: "No experience yet.",
+      noEducation: "No education yet.",
+      noHobbies: "No hobbies yet.",
+      noProjects: "No projects yet.",
+      noTestimonials:
+        "No approved testimonials yet. New submissions appear after approval.",
+      skills: "Skills",
+      experience: "Experience",
+      education: "Education",
+      hobbies: "Hobbies",
+      getInTouch: "Get in Touch",
+      contactTitle: "Get in Touch",
+      contactName: "Name",
+      contactEmail: "Email",
+      contactMessage: "Message",
+      contactCancel: "Cancel",
+      contactSend: "Send",
+      contactSending: "Sending...",
+      contactError: "Please fill out name, email, and message.",
+      testimonialAdd: "Share a testimonial",
+      testimonialName: "Your name",
+      testimonialComment: "Your comment",
+      testimonialCancel: "Cancel",
+      testimonialSubmit: "Submit",
+      testimonialSubmitting: "Sending...",
+      testimonialError: "Please enter your name and comment.",
+      liveDemo: "Live Demo",
+      sourceCode: "Source Code",
+      present: "Present",
+    },
+    fr: {
+      admin: "Tableau de bord",
+      aboutMe: "À propos",
+      projects: "Projets",
+      testimonials: "Témoignages",
+      myProjects: "Mes projets",
+      loadingProfile: "Chargement de votre profil...",
+      loadingProjects: "Chargement des projets...",
+      loadingTestimonials: "Chargement des témoignages...",
+      noSkills: "Aucune compétence pour le moment.",
+      noExperience: "Aucune expérience pour le moment.",
+      noEducation: "Aucune formation pour le moment.",
+      noHobbies: "Aucun loisir pour le moment.",
+      noProjects: "Aucun projet pour le moment.",
+      noTestimonials:
+        "Aucun témoignage approuvé pour le moment. Les nouvelles soumissions apparaissent après approbation.",
+      skills: "Compétences",
+      experience: "Expérience",
+      education: "Formation",
+      hobbies: "Loisirs",
+      getInTouch: "Me contacter",
+      contactTitle: "Me contacter",
+      contactName: "Nom",
+      contactEmail: "Courriel",
+      contactMessage: "Message",
+      contactCancel: "Annuler",
+      contactSend: "Envoyer",
+      contactSending: "Envoi...",
+      contactError: "Veuillez remplir le nom, le courriel et le message.",
+      testimonialAdd: "Partager un témoignage",
+      testimonialName: "Votre nom",
+      testimonialComment: "Votre commentaire",
+      testimonialCancel: "Annuler",
+      testimonialSubmit: "Soumettre",
+      testimonialSubmitting: "Envoi...",
+      testimonialError: "Veuillez saisir votre nom et votre commentaire.",
+      liveDemo: "Démo",
+      sourceCode: "Code source",
+      present: "Présent",
+    },
+  }[lang];
+
+  const skillsByCategory = useMemo(() => {
+    const grouped: Record<string, Skill[]> = {
+      Frontend: [],
+      Backend: [],
+      Misc: [],
+      Other: [],
+    };
+    for (const skill of skills) {
+      const catKey = (skill.category?.en || "Other") as string;
+      if (grouped[catKey]) grouped[catKey].push(skill);
+      else grouped.Other.push(skill);
+    }
+    return grouped;
+  }, [skills, lang]);
 
   const loadAbout = async () => {
     setLoadingAbout(true);
@@ -284,6 +433,39 @@ export default function Home() {
     loadProjects();
   }, []);
 
+  const loadResume = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/public/resume`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as Resume | null;
+      if (data?.fileUrlEn && data?.fileUrlFr) setResume(data);
+    } catch {
+      // ignore resume load errors
+    }
+  };
+
+  useEffect(() => {
+    loadResume();
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    getAccessToken()
+      .then((token) => {
+        if (!alive) return;
+        setIsAuthenticated(Boolean(token));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setIsAuthenticated(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const loadTestimonials = async () => {
     setLoadingTestimonials(true);
     try {
@@ -300,6 +482,19 @@ export default function Home() {
   useEffect(() => {
     loadTestimonials();
   }, []);
+
+  useEffect(() => {
+    AOS.refreshHard();
+  }, [
+    activeTab,
+    skills,
+    experiences,
+    education,
+    hobbies,
+    projects,
+    testimonials,
+  ]);
+
 
   const submitTestimonial = async () => {
     if (!testimonialName.trim() || !testimonialContent.trim()) {
@@ -360,6 +555,42 @@ export default function Home() {
 
   return (
     <>
+      <img
+        src="/shapes/shape-81.svg"
+        alt=""
+        className="floating-shape floating-shape-a"
+        aria-hidden="true"
+      />
+      <img
+        src="/shapes/shape-77.svg"
+        alt=""
+        className="floating-shape floating-shape-b"
+        aria-hidden="true"
+      />
+      <img
+        src="/shapes/shape-85.svg"
+        alt=""
+        className="floating-shape floating-shape-c"
+        aria-hidden="true"
+      />
+      <img
+        src="/shapes/shape-79.svg"
+        alt=""
+        className="floating-shape floating-shape-d"
+        aria-hidden="true"
+      />
+      <img
+        src="/shapes/shape-44.svg"
+        alt=""
+        className="topbar-shape"
+        aria-hidden="true"
+      />
+      <img
+        src="/shapes/shape-45.svg"
+        alt=""
+        className="floating-shape floating-shape-top"
+        aria-hidden="true"
+      />
       {/* TOP HEADER */}
       <div
         style={{
@@ -368,7 +599,6 @@ export default function Home() {
           left: 0,
           right: 0,
           height: "70px",
-          background: "rgba(0, 0, 0, 0.98)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -376,26 +606,28 @@ export default function Home() {
           paddingRight: "2rem",
           zIndex: 100,
           backdropFilter: "blur(10px)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+          background: "transparent",
+          borderBottom: "none",
+          boxShadow: "none",
         }}
       >
         {/* LEFT: Auth Controls + Language Toggle */}
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           {/* Auth Controls */}
-          {user ? <LogoutButton /> : <LoginButton returnTo="/admin" />}
+          {isAuthenticated ? <LogoutButton /> : <LoginButton returnTo="/admin" />}
 
           {/* Language Toggle Switch */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              background: "rgba(255, 255, 255, 0.1)",
-              border: "1px solid rgba(255, 255, 255, 0.2)",
+              background: "rgba(15, 23, 42, 0.08)",
+              border: "2px solid #0f172a",
               borderRadius: "20px",
               padding: "4px",
               cursor: "pointer",
               gap: "0",
+              boxShadow: "3px 3px 0 0 #1e293b",
             }}
             onClick={() => setLang(lang === "en" ? "fr" : "en")}
           >
@@ -403,8 +635,8 @@ export default function Home() {
               style={{
                 padding: "0.5rem 1rem",
                 background:
-                  lang === "en" ? "rgba(255, 255, 255, 1)" : "transparent",
-                color: lang === "en" ? "black" : "white",
+                  lang === "en" ? "#0f172a" : "transparent",
+                color: lang === "en" ? "#ffffff" : "#0f172a",
                 border: "none",
                 borderRadius: "16px",
                 cursor: "pointer",
@@ -423,8 +655,8 @@ export default function Home() {
               style={{
                 padding: "0.5rem 1rem",
                 background:
-                  lang === "fr" ? "rgba(255, 255, 255, 1)" : "transparent",
-                color: lang === "fr" ? "black" : "white",
+                  lang === "fr" ? "#0f172a" : "transparent",
+                color: lang === "fr" ? "#ffffff" : "#0f172a",
                 border: "none",
                 borderRadius: "16px",
                 cursor: "pointer",
@@ -444,9 +676,9 @@ export default function Home() {
 
         {/* RIGHT: Admin Dashboard */}
         <div>
-          {user && (
+          {isAuthenticated && (
             <a href="/admin" className="social-btn">
-              Admin Dashboard
+              {ui.admin}
             </a>
           )}
         </div>
@@ -455,46 +687,31 @@ export default function Home() {
       <div className="app-container" style={{ paddingTop: "120px" }}>
         <div className="portfolio-wrapper">
           {/* LEFT SIDEBAR - PROFILE */}
-          <div className="profile-sidebar">
+          <div className="profile-sidebar" data-aos="fade-right">
             <div className="profile-header">
-              <div
-                style={{
-                  position: "relative",
-                  width: "200px",
-                  height: "200px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  top: "-40px",
-                }}
-              >
-                <CircularText
-                  text="★★★★★★"
-                  spinDuration={50}
-                  onHover="speedUp"
-                />
+              <div className="profile-avatar-wrap">
                 <Image
-                  src={user?.picture || "/profile.jpg"}
+                  src="/profile.jpg"
                   alt="Profile"
                   className="profile-image-small"
-                  width={120}
-                  height={120}
+                  width={150}
+                  height={150}
                   style={{ position: "absolute", zIndex: 10 }}
                 />
               </div>
 
               <div className="profile-name-section">
                 <div className="profile-name-row">
-                  <h1 className="profile-name">{user?.name || "Annie Yang"}</h1>
-                  <button
-                    className="get-in-touch-btn"
-                    onClick={() => {
-                      setContactStatus("idle");
-                      setShowContactForm(true);
-                    }}
-                  >
-                    Get in Touch
-                  </button>
+                  <h1 className="profile-name">Annie Yang</h1>
+                    <button
+                      className="get-in-touch-btn"
+                      onClick={() => {
+                        setContactStatus("idle");
+                        setShowContactForm(true);
+                      }}
+                    >
+                      {ui.getInTouch}
+                    </button>
                 </div>
                 {contactNotice && (
                   <p style={{ marginTop: "0.6rem", color: "#d8f3dc" }}>
@@ -507,60 +724,48 @@ export default function Home() {
 
             <div className="profile-info">
               <div
-                style={{
-                  padding: "1.25rem",
-                  background: "rgb(110, 156, 255)",
-                  borderRadius: "16px",
-                  border: "1px solid rgba(255, 255, 255, 0.15)",
-                  width: "600px",
-                  minHeight: "150px",
-                  marginTop: "-40px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-start",
-                }}
+                className="neo-card profile-bio-card animate-blur-in-500"
               >
                 <p className="bio" style={{ margin: 0 }}>
-                  This is textThis is textThis is textThis is textThis is
-                  textThis is textThis is textThis is textThis is textThis is
-                  textThis is textThis is textThis is textThis is textThis is
-                  textThis is textThis is textThis is textThis is textThis is
-                  textThis is textThis is textThis is textThis is textThis is
-                  textThis is textThis is textThis is textThis is text textThis
-                  is textThis is textThis is texttextThis is textThis is
-                  textThis is texttextThis is textThis is textThis is
-                  texttextThis is textThis is textThis is texttextThis is
-                  textThis is textThis is texttextThis is textThis is textThis
-                  is texttextThis is textThis is textThis is texttextThis is
-                  textThis is textThis is texttextThis is textThis is textThis
-                  is text
+                  {summary[lang]}
                 </p>
               </div>
 
               <div className="social-links">
                 <a
                   href="https://github.com"
-                  className="social-btn"
+                  className="social-btn hint--top hint--rounded"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="GitHub"
                 >
-                  GitHub
+                  <FaGithub size={20} />
                 </a>
                 <a
                   href="https://linkedin.com"
-                  className="social-btn"
+                  className="social-btn hint--top hint--rounded"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="LinkedIn"
                 >
-                  LinkedIn
+                  <FaLinkedin size={20} />
                 </a>
                 <a
-                  href="/cv.pdf"
-                  className="social-btn"
+                  href={
+                    resume
+                      ? lang === "fr"
+                        ? resume.fileUrlFr
+                        : resume.fileUrlEn
+                      : lang === "fr"
+                        ? "/cv-fr-v2.pdf"
+                        : "/cv.pdf"
+                  }
+                  className="social-btn hint--top hint--rounded"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={lang === "fr" ? "CV (FR)" : "CV (EN)"}
                 >
-                  CV
+                  <FaFilePdf size={20} />
                 </a>
               </div>
             </div>
@@ -569,31 +774,35 @@ export default function Home() {
           {/* RIGHT SIDE - CONTENT */}
           <div className="content-area">
             {/* NAVIGATION TABS */}
-            <div className="nav-tabs">
-              <button
-                className={`nav-tab ${activeTab === "about" ? "active" : ""}`}
-                onClick={() => setActiveTab("about")}
-              >
-                About Me
-              </button>
-              <button
-                className={`nav-tab ${activeTab === "projects" ? "active" : ""}`}
-                onClick={() => setActiveTab("projects")}
-              >
-                Projects
-              </button>
-              <button
-                className={`nav-tab ${activeTab === "testimonials" ? "active" : ""}`}
-                onClick={() => setActiveTab("testimonials")}
-              >
-                Testimonials
-              </button>
-            </div>
+                <div className="nav-tabs" data-aos="fade-down">
+                  <button
+                    className={`nav-tab ${activeTab === "about" ? "active" : ""}`}
+                    onClick={() => setActiveTab("about")}
+                  >
+                    {ui.aboutMe}
+                  </button>
+                  <button
+                    className={`nav-tab ${activeTab === "projects" ? "active" : ""}`}
+                    onClick={() => setActiveTab("projects")}
+                  >
+                    {ui.projects}
+                  </button>
+                  <button
+                    className={`nav-tab ${activeTab === "testimonials" ? "active" : ""}`}
+                    onClick={() => setActiveTab("testimonials")}
+                  >
+                    {ui.testimonials}
+                  </button>
+                </div>
 
             {/* CONTENT PANEL */}
             <div className="content-panel">
               {activeTab === "about" && (
-                <div>
+                <div
+                  id="about-container"
+                  className="section-background"
+                  data-aos="no"
+                >
                   <div
                     style={{
                       display: "flex",
@@ -603,79 +812,113 @@ export default function Home() {
                     }}
                   >
                     <h2 style={{ fontSize: "1.8rem", marginBottom: 0 }}>
-                      About Me
+                      {ui.aboutMe}
                     </h2>
                   </div>
                   {loadingAbout && (
-                    <p style={{ color: "#e0e0e0", lineHeight: "1.8" }}>
-                      Loading your profile...
+                    <p style={{ color: "#475569", lineHeight: "1.8" }}>
+                      {ui.loadingProfile}
                     </p>
                   )}
                   {!loadingAbout && (
-                    <div style={{ display: "grid", gap: "2rem" }}>
+                    <div className="about-grid">
                       <section>
-                        <h3 style={{ marginBottom: "0.75rem" }}>Skills</h3>
+                        <h3 className="section-title">{ui.skills}</h3>
                         <div
                           style={{
-                            display: "flex",
-                            gap: "0.75rem",
-                            flexWrap: "wrap",
+                            display: "grid",
+                            gap: "1rem",
+                            gridTemplateColumns: "1fr",
                           }}
                         >
-                          {skills.map((skill) => {
-                            const label = (skill.name?.[lang] ||
-                              skill.name?.en ||
-                              "Skill") as string;
-                            const Icon = getSkillIcon(label);
-                            return (
-                              <div
-                                key={skill.id}
-                                style={{
-                                  padding: "0.9rem 1.1rem",
-                                  borderRadius: "16px",
-                                  border: "1px solid rgba(255, 255, 255, 0.2)",
-                                  background: "rgba(255, 255, 255, 0.08)",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  alignItems: "center",
-                                  gap: "0.5rem",
-                                  minWidth: "110px",
-                                }}
-                              >
-                                {Icon && (
-                                  <Icon
-                                    size={28}
-                                    color={getSkillIconColor(label)}
-                                  />
-                                )}
-                                <span style={{ fontSize: "0.95rem" }}>
-                                  {label}
-                                </span>
-                              </div>
-                            );
-                          })}
-                          {skills.length === 0 && (
-                            <span style={{ color: "#e0e0e0" }}>
-                              No skills yet.
-                            </span>
+                          {(["Frontend", "Backend", "Misc"] as const).map(
+                            (group) => {
+                              const groupSkills = skillsByCategory[group] || [];
+                              const groupLabel =
+                                lang === "fr"
+                                  ? group === "Frontend"
+                                    ? "Front-end"
+                                    : group === "Backend"
+                                      ? "Back-end"
+                                      : "Divers"
+                                  : group;
+                              return (
+                                <div
+                                  key={group}
+                                  className="neo-card animate-blur-in-500"
+                                  style={{ padding: "1.25rem" }}
+                                >
+                                  <h4
+                                    style={{
+                                      fontSize: "1.1rem",
+                                      fontWeight: 800,
+                                      marginBottom: "0.75rem",
+                                    }}
+                                  >
+                                    {groupLabel}
+                                  </h4>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: "0.75rem",
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                    {groupSkills.map((skill) => {
+                                      const label = (skill.name?.[lang] ||
+                                        skill.name?.en ||
+                                        "Skill") as string;
+                                      const file = getSkillIconFile(label);
+                                      const Icon = getSkillIcon(label);
+                                      return (
+                                        <span
+                                          className="hint--top hint--rounded"
+                                          key={skill.id}
+                                          aria-label={label}
+                                        >
+                                          <span className="skill-icon">
+                                            {file ? (
+                                              <Image
+                                                src={`/skillicons/${file}`}
+                                                alt={label}
+                                                width={32}
+                                                height={32}
+                                              />
+                                            ) : Icon ? (
+                                              <Icon
+                                                size={22}
+                                                color={getSkillIconColor(label)}
+                                              />
+                                            ) : (
+                                              <span className="skill-fallback">
+                                                {label.slice(0, 2).toUpperCase()}
+                                              </span>
+                                            )}
+                                          </span>
+                                        </span>
+                                      );
+                                    })}
+                                    {groupSkills.length === 0 && (
+                              <span style={{ color: "#475569" }}>
+                                {ui.noSkills}
+                              </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            },
                           )}
                         </div>
                       </section>
 
                       <section>
-                        <h3 style={{ marginBottom: "0.75rem" }}>Experience</h3>
+                        <h3 className="section-title">{ui.experience}</h3>
                         <div style={{ display: "grid", gap: "1rem" }}>
                           {experiences.map((exp) => (
                             <div
                               key={exp.id}
-                              style={{
-                                padding: "1rem",
-                                borderRadius: "16px",
-                                background: "rgba(255, 255, 255, 0.05)",
-                                border: "1px solid rgba(255, 255, 255, 0.12)",
-                                display: "flex",
-                                alignItems: "flex-start",
-                              }}
+                              className="neo-card animate-blur-in-700"
+                              style={{ padding: "1rem", display: "flex" }}
                             >
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700 }}>
@@ -694,7 +937,7 @@ export default function Home() {
                                 <div
                                   style={{
                                     fontSize: "0.85rem",
-                                    color: "#e0e0e0",
+                                    color: "#475569",
                                   }}
                                 >
                                   {new Date(exp.startDate).toLocaleDateString(
@@ -702,7 +945,7 @@ export default function Home() {
                                     { month: "short", year: "numeric" },
                                   )}{" "}
                                   {exp.isCurrent
-                                    ? "- Present"
+                                    ? `- ${ui.present}`
                                     : new Date(exp.endDate!).toLocaleDateString(
                                         lang === "en" ? "en-US" : "fr-FR",
                                         { month: "short", year: "numeric" },
@@ -711,7 +954,7 @@ export default function Home() {
                                 <p
                                   style={{
                                     marginTop: "0.5rem",
-                                    color: "#e0e0e0",
+                                    color: "#1f2937",
                                   }}
                                 >
                                   {
@@ -724,25 +967,21 @@ export default function Home() {
                             </div>
                           ))}
                           {experiences.length === 0 && (
-                            <span style={{ color: "#e0e0e0" }}>
-                              No experience yet.
+                            <span style={{ color: "#475569" }}>
+                              {ui.noExperience}
                             </span>
                           )}
                         </div>
                       </section>
 
                       <section>
-                        <h3 style={{ marginBottom: "0.75rem" }}>Education</h3>
+                        <h3 className="section-title">{ui.education}</h3>
                         <div style={{ display: "grid", gap: "1rem" }}>
                           {education.map((edu) => (
                             <div
                               key={edu.id}
-                              style={{
-                                padding: "1rem",
-                                borderRadius: "16px",
-                                background: "rgba(255, 255, 255, 0.05)",
-                                border: "1px solid rgba(255, 255, 255, 0.12)",
-                              }}
+                              className="neo-card animate-blur-in-700"
+                              style={{ padding: "1rem" }}
                             >
                               <div style={{ fontWeight: 700 }}>
                                 {
@@ -760,7 +999,7 @@ export default function Home() {
                               <div
                                 style={{
                                   fontSize: "0.85rem",
-                                  color: "#e0e0e0",
+                                  color: "#475569",
                                 }}
                               >
                                 {edu.startDate?.slice(0, 10)}{" "}
@@ -773,7 +1012,7 @@ export default function Home() {
                                 <p
                                   style={{
                                     marginTop: "0.5rem",
-                                    color: "#e0e0e0",
+                                    color: "#1f2937",
                                   }}
                                 >
                                   {
@@ -785,15 +1024,15 @@ export default function Home() {
                             </div>
                           ))}
                           {education.length === 0 && (
-                            <span style={{ color: "#e0e0e0" }}>
-                              No education yet.
+                            <span style={{ color: "#475569" }}>
+                              {ui.noEducation}
                             </span>
                           )}
                         </div>
                       </section>
 
                       <section>
-                        <h3 style={{ marginBottom: "0.75rem" }}>Hobbies</h3>
+                        <h3 className="section-title">{ui.hobbies}</h3>
                         <div
                           style={{
                             display: "flex",
@@ -804,12 +1043,7 @@ export default function Home() {
                           {hobbies.map((hobby) => (
                             <span
                               key={hobby.id}
-                              style={{
-                                padding: "0.4rem 0.8rem",
-                                borderRadius: "999px",
-                                border: "1px solid rgba(255, 255, 255, 0.2)",
-                                background: "rgba(255, 255, 255, 0.08)",
-                              }}
+                              className="neo-chip"
                             >
                               {
                                 (hobby.name?.[lang] ||
@@ -819,8 +1053,8 @@ export default function Home() {
                             </span>
                           ))}
                           {hobbies.length === 0 && (
-                            <span style={{ color: "#e0e0e0" }}>
-                              No hobbies yet.
+                            <span style={{ color: "#475569" }}>
+                              {ui.noHobbies}
                             </span>
                           )}
                         </div>
@@ -831,14 +1065,14 @@ export default function Home() {
               )}
 
               {activeTab === "projects" && (
-                <div>
+                <div id="projects-container" className="section-background">
                   <h2 style={{ fontSize: "1.8rem", marginBottom: "1.5rem" }}>
-                    My Projects
+                    {ui.myProjects}
                   </h2>
                   {loadingProjects ? (
-                    <p style={{ color: "#d7d7d7" }}>Loading projects...</p>
+                    <p style={{ color: "#475569" }}>{ui.loadingProjects}</p>
                   ) : projects.length === 0 ? (
-                    <p style={{ color: "#d7d7d7" }}>No projects yet.</p>
+                    <p style={{ color: "#475569" }}>{ui.noProjects}</p>
                   ) : (
                     <div
                       style={{
@@ -848,23 +1082,15 @@ export default function Home() {
                       }}
                     >
                       {projects.map((project) => {
-                        const href = project.repoUrl?.trim();
-                        const CardTag = href ? "a" : "div";
+                        const repoHref = project.repoUrl?.trim();
+                        const liveHref = project.url?.trim();
                         return (
-                          <CardTag
+                          <div
                             key={project.id}
-                            href={href || undefined}
-                            target={href ? "_blank" : undefined}
-                            rel={href ? "noreferrer" : undefined}
+                            className="neo-card animate-blur-in-700"
+                            data-aos="fade-up"
                             style={{
-                              background: "rgba(255, 255, 255, 0.05)",
-                              borderRadius: "18px",
                               overflow: "hidden",
-                              border: "1px solid rgba(255, 255, 255, 0.12)",
-                              textDecoration: "none",
-                              color: "inherit",
-                              transition:
-                                "transform 0.2s ease, border 0.2s ease",
                             }}
                           >
                             {project.imageUrl && (
@@ -891,7 +1117,9 @@ export default function Home() {
                               <h3
                                 style={{
                                   margin: "0 0 0.4rem 0",
-                                  fontSize: "1rem",
+                                  fontSize: "1.25rem",
+                                  fontWeight: 800,
+                                  letterSpacing: "0.02em",
                                 }}
                               >
                                 {
@@ -900,11 +1128,42 @@ export default function Home() {
                                     "Project") as string
                                 }
                               </h3>
+                              {(liveHref || repoHref) && (
+                                <div
+                                  style={{
+                                    marginTop: "0.75rem",
+                                    display: "flex",
+                                    gap: "0.75rem",
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  {liveHref && (
+                                    <a
+                                      href={liveHref}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="project-btn project-btn-primary"
+                                    >
+                                      {ui.liveDemo}
+                                    </a>
+                                  )}
+                                  {repoHref && (
+                                    <a
+                                      href={repoHref}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="project-btn project-btn-outline"
+                                    >
+                                      {ui.sourceCode}
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                               <p
                                 style={{
-                                  margin: 0,
-                                  color: "#e0e0e0",
-                                  lineHeight: "1.5",
+                                  margin: "0.9rem 0 0 0",
+                                  color: "#1f2937",
+                                  lineHeight: "1.6",
                                 }}
                               >
                                 {
@@ -917,32 +1176,62 @@ export default function Home() {
                                 project.techStack.length > 0 && (
                                   <div
                                     style={{
-                                      marginTop: "0.75rem",
+                                      marginTop: "0.9rem",
                                       display: "flex",
                                       flexWrap: "wrap",
                                       gap: "0.5rem",
                                     }}
                                   >
-                                    {project.techStack.map((tech) => (
-                                      <span
-                                        key={tech}
-                                        style={{
-                                          padding: "0.3rem 0.7rem",
-                                          borderRadius: "999px",
-                                          border:
-                                            "1px solid rgba(255, 255, 255, 0.2)",
-                                          background:
-                                            "rgba(255, 255, 255, 0.08)",
-                                          fontSize: "0.8rem",
-                                        }}
-                                      >
-                                        {tech}
-                                      </span>
-                                    ))}
+                                    {(() => {
+                                      const withIcon: string[] = [];
+                                      const withoutIcon: string[] = [];
+                                      for (const tech of project.techStack || []) {
+                                        const hasIcon =
+                                          Boolean(getSkillIconFile(tech)) ||
+                                          Boolean(getSkillIcon(tech));
+                                        if (hasIcon) withIcon.push(tech);
+                                        else withoutIcon.push(tech);
+                                      }
+                                      return [...withIcon, ...withoutIcon].map(
+                                        (tech) => (
+                                          <span
+                                            key={tech}
+                                            className="neo-chip"
+                                            style={{
+                                              fontSize: "0.8rem",
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              gap: "0.35rem",
+                                            }}
+                                          >
+                                            {(() => {
+                                              const file = getSkillIconFile(tech);
+                                              if (file) {
+                                                return (
+                                                  <Image
+                                                    src={`/skillicons/${file}`}
+                                                    alt={tech}
+                                                    width={16}
+                                                    height={16}
+                                                  />
+                                                );
+                                              }
+                                              const Icon = getSkillIcon(tech);
+                                              const color =
+                                                getSkillIconColor(tech);
+                                              return Icon ? (
+                                                <Icon size={14} color={color} />
+                                              ) : null;
+                                            })()}
+                                            {tech}
+                                          </span>
+                                        ),
+                                      );
+                                    })()}
                                   </div>
                                 )}
                             </div>
-                          </CardTag>
+                          </div>
                         );
                       })}
                     </div>
@@ -951,7 +1240,7 @@ export default function Home() {
               )}
 
               {activeTab === "testimonials" && (
-                <div>
+                <div id="testimonials-container" className="section-background">
                   <div
                     style={{
                       display: "flex",
@@ -962,16 +1251,16 @@ export default function Home() {
                     }}
                   >
                     <h2 style={{ fontSize: "1.8rem", margin: 0 }}>
-                      Testimonials
+                      {ui.testimonials}
                     </h2>
                     <button
                       style={{
                         width: "38px",
                         height: "38px",
                         borderRadius: "50%",
-                        background: "#ffffff",
-                        color: "#0a0a0a",
-                        border: "none",
+                        background: "#0f172a",
+                        color: "#ffffff",
+                        border: "2px solid #0f172a",
                         fontWeight: 700,
                         fontSize: "1.3rem",
                         cursor: "pointer",
@@ -979,6 +1268,7 @@ export default function Home() {
                         alignItems: "center",
                         justifyContent: "center",
                         lineHeight: 1,
+                        boxShadow: "3px 3px 0 0 #1e293b",
                       }}
                       aria-label="Add testimonial"
                       onClick={() => {
@@ -993,11 +1283,12 @@ export default function Home() {
                     <div
                       style={{
                         padding: "0.9rem 1rem",
-                        background: "rgba(255, 255, 255, 0.08)",
-                        borderRadius: "10px",
-                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(255, 255, 255, 0.6)",
+                        borderRadius: "16px",
+                        border: "2px solid #0f172a",
                         marginBottom: "1.2rem",
-                        color: "#f2f2f2",
+                        color: "#0f172a",
+                        boxShadow: "3px 3px 0 0 #1e293b",
                       }}
                     >
                       {testimonialNotice}
@@ -1005,23 +1296,19 @@ export default function Home() {
                   )}
 
                   {loadingTestimonials ? (
-                    <p style={{ color: "#d7d7d7" }}>Loading testimonials...</p>
-                  ) : testimonials.length === 0 ? (
-                    <p style={{ color: "#d7d7d7" }}>
-                      No approved testimonials yet. New submissions appear after
-                      approval.
+                    <p style={{ color: "#475569" }}>
+                      {ui.loadingTestimonials}
                     </p>
+                  ) : testimonials.length === 0 ? (
+                    <p style={{ color: "#475569" }}>{ui.noTestimonials}</p>
                   ) : (
                     <div style={{ display: "grid", gap: "1rem" }}>
                       {testimonials.map((item) => (
                         <div
                           key={item.id}
-                          style={{
-                            padding: "1.5rem",
-                            background: "rgba(255, 255, 255, 0.08)",
-                            borderRadius: "12px",
-                            borderLeft: "4px solid #ffffff",
-                          }}
+                          className="neo-card animate-blur-in-700"
+                          data-aos="fade-up"
+                          style={{ padding: "1.5rem" }}
                         >
                           <div
                             style={{
@@ -1035,7 +1322,7 @@ export default function Home() {
                                 width: "38px",
                                 height: "38px",
                                 borderRadius: "50%",
-                                background: "rgba(255,255,255,0.18)",
+                                background: "#0f172a",
                                 color: "#ffffff",
                                 display: "flex",
                                 alignItems: "center",
@@ -1062,7 +1349,7 @@ export default function Home() {
                               <p
                                 style={{
                                   margin: 0,
-                                  color: "#ffffff",
+                                  color: "#0f172a",
                                   fontWeight: "600",
                                 }}
                               >
@@ -1071,7 +1358,7 @@ export default function Home() {
                               <p
                                 style={{
                                   margin: "0.35rem 0 0 0",
-                                  color: "#cfcfcf",
+                                  color: "#475569",
                                   fontSize: "0.85rem",
                                 }}
                               >
@@ -1089,7 +1376,7 @@ export default function Home() {
                           <p
                             style={{
                               margin: "0.9rem 0 0 0",
-                              color: "#e0e0e0",
+                              color: "#1f2937",
                               fontSize: "0.95rem",
                               lineHeight: "1.8",
                             }}
@@ -1120,17 +1407,7 @@ export default function Home() {
             zIndex: 200,
           }}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "520px",
-              background: "#0b0b0b",
-              borderRadius: "16px",
-              border: "1px solid rgba(255,255,255,0.12)",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-              padding: "1.5rem",
-            }}
-          >
+          <div className="neo-card modal-card">
             <div
               style={{
                 display: "flex",
@@ -1139,70 +1416,50 @@ export default function Home() {
                 marginBottom: "1rem",
               }}
             >
-              <h3 style={{ margin: 0, fontSize: "1.3rem" }}>Get in Touch</h3>
+              <h3 style={{ margin: 0, fontSize: "1.3rem" }}>
+                {ui.contactTitle}
+              </h3>
               <button
                 onClick={() => setShowContactForm(false)}
                 style={{
                   background: "transparent",
-                  color: "#ffffff",
+                  color: "#0f172a",
                   border: "none",
                   fontSize: "1.2rem",
                   cursor: "pointer",
                 }}
                 aria-label="Close"
               >
-                ✕
+                ✁E
               </button>
             </div>
 
-            <div style={{ display: "grid", gap: "0.9rem" }}>
+            <div className="modal-fields">
               <input
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
-                placeholder="Name"
-                style={{
-                  width: "100%",
-                  padding: "0.8rem",
-                  borderRadius: "10px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#ffffff",
-                }}
+                placeholder={ui.contactName}
+                className="modal-input"
               />
               <input
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="Email"
+                placeholder={ui.contactEmail}
                 type="email"
-                style={{
-                  width: "100%",
-                  padding: "0.8rem",
-                  borderRadius: "10px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#ffffff",
-                }}
+                className="modal-input"
               />
               <textarea
                 value={contactMessage}
                 onChange={(e) => setContactMessage(e.target.value)}
-                placeholder="Message"
+                placeholder={ui.contactMessage}
                 rows={5}
-                style={{
-                  width: "100%",
-                  padding: "0.8rem",
-                  borderRadius: "10px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#ffffff",
-                  resize: "vertical",
-                }}
+                className="modal-input modal-textarea"
               />
             </div>
 
             {contactStatus === "error" && (
               <p style={{ color: "#ff9b9b", marginTop: "0.8rem" }}>
-                Please fill out name, email, and message.
+                {ui.contactError}
               </p>
             )}
 
@@ -1216,32 +1473,19 @@ export default function Home() {
             >
               <button
                 onClick={() => setShowContactForm(false)}
-                style={{
-                  padding: "0.7rem 1.2rem",
-                  background: "transparent",
-                  color: "#ffffff",
-                  borderRadius: "999px",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  cursor: "pointer",
-                }}
+                className="project-btn project-btn-outline"
               >
-                Cancel
+                {ui.contactCancel}
               </button>
               <button
                 onClick={submitContact}
                 disabled={contactStatus === "submitting"}
-                style={{
-                  padding: "0.7rem 1.2rem",
-                  background: "#ffffff",
-                  color: "#0a0a0a",
-                  borderRadius: "999px",
-                  border: "none",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  opacity: contactStatus === "submitting" ? 0.7 : 1,
-                }}
+                className="project-btn project-btn-primary"
+                style={{ opacity: contactStatus === "submitting" ? 0.7 : 1 }}
               >
-                {contactStatus === "submitting" ? "Sending..." : "Send"}
+                {contactStatus === "submitting"
+                  ? ui.contactSending
+                  : ui.contactSend}
               </button>
             </div>
           </div>
@@ -1261,17 +1505,7 @@ export default function Home() {
             zIndex: 200,
           }}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "520px",
-              background: "#0b0b0b",
-              borderRadius: "16px",
-              border: "1px solid rgba(255,255,255,0.12)",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-              padding: "1.5rem",
-            }}
-          >
+          <div className="neo-card modal-card">
             <div
               style={{
                 display: "flex",
@@ -1281,57 +1515,42 @@ export default function Home() {
               }}
             >
               <h3 style={{ margin: 0, fontSize: "1.3rem" }}>
-                Share a testimonial
+                {ui.testimonialAdd}
               </h3>
               <button
                 onClick={() => setShowTestimonialForm(false)}
                 style={{
                   background: "transparent",
-                  color: "#ffffff",
+                  color: "#0f172a",
                   border: "none",
                   fontSize: "1.2rem",
                   cursor: "pointer",
                 }}
                 aria-label="Close"
               >
-                ✕
+                ✁E
               </button>
             </div>
 
-            <div style={{ display: "grid", gap: "0.9rem" }}>
+            <div className="modal-fields">
               <input
                 value={testimonialName}
                 onChange={(e) => setTestimonialName(e.target.value)}
-                placeholder="Your name"
-                style={{
-                  width: "100%",
-                  padding: "0.8rem",
-                  borderRadius: "10px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#ffffff",
-                }}
+                placeholder={ui.testimonialName}
+                className="modal-input"
               />
               <textarea
                 value={testimonialContent}
                 onChange={(e) => setTestimonialContent(e.target.value)}
-                placeholder="Your comment"
+                placeholder={ui.testimonialComment}
                 rows={5}
-                style={{
-                  width: "100%",
-                  padding: "0.8rem",
-                  borderRadius: "10px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#ffffff",
-                  resize: "vertical",
-                }}
+                className="modal-input modal-textarea"
               />
             </div>
 
             {testimonialStatus === "error" && (
               <p style={{ color: "#ff9b9b", marginTop: "0.8rem" }}>
-                Please enter your name and comment.
+                {ui.testimonialError}
               </p>
             )}
 
@@ -1345,32 +1564,19 @@ export default function Home() {
             >
               <button
                 onClick={() => setShowTestimonialForm(false)}
-                style={{
-                  padding: "0.7rem 1.2rem",
-                  background: "transparent",
-                  color: "#ffffff",
-                  borderRadius: "999px",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  cursor: "pointer",
-                }}
+                className="project-btn project-btn-outline"
               >
-                Cancel
+                {ui.testimonialCancel}
               </button>
               <button
                 onClick={submitTestimonial}
                 disabled={testimonialStatus === "submitting"}
-                style={{
-                  padding: "0.7rem 1.2rem",
-                  background: "#ffffff",
-                  color: "#0a0a0a",
-                  borderRadius: "999px",
-                  border: "none",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  opacity: testimonialStatus === "submitting" ? 0.7 : 1,
-                }}
+                className="project-btn project-btn-primary"
+                style={{ opacity: testimonialStatus === "submitting" ? 0.7 : 1 }}
               >
-                {testimonialStatus === "submitting" ? "Sending..." : "Submit"}
+                {testimonialStatus === "submitting"
+                  ? ui.testimonialSubmitting
+                  : ui.testimonialSubmit}
               </button>
             </div>
           </div>
@@ -1379,3 +1585,4 @@ export default function Home() {
     </>
   );
 }
+

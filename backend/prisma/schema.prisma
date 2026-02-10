@@ -68,8 +68,8 @@ model Education {
 
 model Resume {
   id        String   @id @default(uuid())
-  title     Json?
-  fileUrl   String
+  fileUrlEn String
+  fileUrlFr String
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

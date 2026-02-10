@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Auth0Provider } from "@auth0/nextjs-auth0/client";
-import Particles from "@/components/Particles";
+import Providers from "@/components/Providers";
+import AOSProvider from "@/components/AOSProvider";
 import "./globals.css";
+import "@/lib/hint.min.css";
 
 export const metadata: Metadata = {
   title: "Auth0 Next.js App",
@@ -16,6 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <AOSProvider />
         <div
           style={{
             position: "fixed",
@@ -27,20 +29,15 @@ export default function RootLayout({
             pointerEvents: "none",
           }}
         >
-          <Particles
-            particleColors={["#ffffff"]}
-            particleCount={30}
-            particleSpread={10}
-            speed={0.05}
-            particleBaseSize={200}
-            moveParticlesOnHover
-            alphaParticles={false}
-            disableRotation={true}
-            pixelRatio={1}
+          <img
+            src="/shape-76.svg"
+            alt=""
+            className="floating-orb images glow"
+            aria-hidden="true"
           />
         </div>
         <div style={{ position: "relative", zIndex: 1 }}>
-          <Auth0Provider>{children}</Auth0Provider>
+          <Providers>{children}</Providers>
         </div>
       </body>
     </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useUser } from "@auth0/nextjs-auth0/client";
@@ -33,6 +33,8 @@ type ResourceDef = {
   fields: FieldDef[];
   summaryFields?: string[];
 };
+
+type FormState = Record<string, unknown>;
 
 type TopTab = {
   key: string;
@@ -115,24 +117,11 @@ const resources: ResourceDef[] = [
     label: "Resume",
     path: "/admin/resumes",
     fields: [
-      { name: "title", label: "Title", type: "bilingual" },
-      { name: "fileUrl", label: "File URL", type: "text" },
+      { name: "fileUrlEn", label: "File URL (English)", type: "text" },
+      { name: "fileUrlFr", label: "File URL (French)", type: "text" },
       { name: "isActive", label: "Active", type: "boolean" },
     ],
-    summaryFields: ["title", "isActive", "fileUrl"],
-  },
-  {
-    key: "contact-info",
-    label: "Contact Info",
-    path: "/admin/contact-info",
-    fields: [
-      { name: "email", label: "Email", type: "text" },
-      { name: "phone", label: "Phone", type: "text" },
-      { name: "location", label: "Location", type: "bilingual" },
-      { name: "website", label: "Website", type: "text" },
-      { name: "socials", label: "Socials (JSON)", type: "json" },
-    ],
-    summaryFields: ["email", "phone", "location", "website"],
+    summaryFields: ["fileUrlEn", "fileUrlFr", "isActive"],
   },
   {
     key: "hobbies",
@@ -178,9 +167,8 @@ const inputToIso = (value?: string) => {
 
 const emptyBilingual = { en: "", fr: "" };
 
-function buildEmptyForm(fields: FieldDef[]) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: Record<string, any> = {};
+function buildEmptyForm(fields: FieldDef[]): FormState {
+  const data: FormState = {};
   for (const field of fields) {
     if (field.type === "bilingual") data[field.name] = { ...emptyBilingual };
     else if (field.type === "boolean") data[field.name] = false;
@@ -190,12 +178,8 @@ function buildEmptyForm(fields: FieldDef[]) {
   return data;
 }
 
-function normalizeItemToForm(
-  fields: FieldDef[],
-  item: Record<string, unknown>,
-) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: Record<string, any> = {};
+function normalizeItemToForm(fields: FieldDef[], item: Record<string, unknown>) {
+  const data: FormState = {};
   for (const field of fields) {
     const value = item?.[field.name];
     if (field.type === "bilingual") {
@@ -216,14 +200,19 @@ function normalizeItemToForm(
 }
 
 function buildPayload(fields: FieldDef[], form: Record<string, unknown>) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: Record<string, any> = {};
+  const data: Record<string, unknown> = {};
   for (const field of fields) {
     const value = form[field.name];
     if (field.type === "bilingual") {
-      data[field.name] = value;
+      const bilingual = (value ?? emptyBilingual) as {
+        en?: string;
+        fr?: string;
+      };
+      const en = (bilingual.en ?? "").trim();
+      const fr = (bilingual.fr ?? "").trim();
+      data[field.name] = { en, fr };
     } else if (field.type === "number") {
-      data[field.name] = value === "" ? null : Number(value);
+      data[field.name] = value === "" ? undefined : Number(value);
     } else if (field.type === "boolean") {
       data[field.name] = Boolean(value);
     } else if (field.type === "array") {
@@ -235,11 +224,11 @@ function buildPayload(fields: FieldDef[], form: Record<string, unknown>) {
               .filter(Boolean)
           : value;
     } else if (field.type === "date") {
-      data[field.name] = value ? inputToIso(value as string) : null;
+      data[field.name] = value ? inputToIso(value as string) : undefined;
     } else if (field.type === "json") {
-      data[field.name] = value ? JSON.parse(value as string) : null;
+      data[field.name] = value ? JSON.parse(value as string) : undefined;
     } else {
-      data[field.name] = value === "" ? null : value;
+      data[field.name] = value === "" ? undefined : value;
     }
   }
   return data;
@@ -254,17 +243,26 @@ export default function AdminPage() {
     getResourceByKey(defaultAboutKey),
   );
   const [items, setItems] = useState<Record<string, unknown>[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+  const [mutating, setMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success";
   } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [form, setForm] = useState<Record<string, any>>(
-    buildEmptyForm(active.fields),
-  );
+  const [form, setForm] = useState<FormState>(buildEmptyForm(active.fields));
+  const formRef = useRef<FormState>(buildEmptyForm(active.fields));
+
+  const setFormState = (
+    next: FormState | ((prev: FormState) => FormState),
+  ) => {
+    setForm((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+      formRef.current = resolved;
+      return resolved;
+    });
+  };
 
   const topTabs = useMemo<TopTab[]>(
     () => [
@@ -326,12 +324,14 @@ export default function AdminPage() {
     active.key === "testimonials" || active.key === "messages";
 
   useEffect(() => {
-    setForm(buildEmptyForm(active.fields));
+    const empty = buildEmptyForm(active.fields);
+    formRef.current = empty;
+    setForm(empty);
     setSelectedId(null);
   }, [active]);
 
   const loadItems = async () => {
-    setLoading(true);
+    setLoadingList(true);
     setError(null);
     try {
       const data = await apiFetch(active.path, {}, true);
@@ -345,7 +345,7 @@ export default function AdminPage() {
       });
       setItems([]);
     } finally {
-      setLoading(false);
+      setLoadingList(false);
     }
   };
 
@@ -357,21 +357,37 @@ export default function AdminPage() {
 
   const onEdit = (item: Record<string, unknown>) => {
     setSelectedId(item.id as string);
-    setForm(
-      normalizeItemToForm(active.fields, item as Record<string, unknown>),
+    const next = normalizeItemToForm(
+      active.fields,
+      item as Record<string, unknown>,
     );
+    formRef.current = next;
+    setForm(next);
   };
 
   const onReset = () => {
     setSelectedId(null);
-    setForm(buildEmptyForm(active.fields));
+    const empty = buildEmptyForm(active.fields);
+    formRef.current = empty;
+    setForm(empty);
   };
 
   const onSubmit = async () => {
-    setLoading(true);
+    setMutating(true);
     setError(null);
     try {
-      const payload = buildPayload(active.fields, form);
+      const currentForm = formRef.current;
+      console.log("Admin submit form", {
+        resource: active.key,
+        selectedId,
+        form: JSON.parse(JSON.stringify(currentForm))
+      });
+      const payload = buildPayload(active.fields, currentForm);
+      console.log("Admin submit payload", {
+        resource: active.key,
+        selectedId,
+        payload: JSON.parse(JSON.stringify(payload))
+      });
       let saved: Record<string, unknown> | null = null;
       if (selectedId) {
         saved = await apiFetch(
@@ -414,23 +430,24 @@ export default function AdminPage() {
           .map((i) => (i.path || []).join("."))
           .filter(Boolean);
         const uniqueFields = Array.from(new Set(fields));
-        setError("Please fill all required fields.");
-        setToast({
-          message: `Please fill all required fields: ${uniqueFields.join(", ")}`,
-          type: "error",
-        });
+        const msg =
+          uniqueFields.length > 0
+            ? `Missing or invalid fields: ${uniqueFields.join(", ")}`
+            : "Missing or invalid fields.";
+        setError(msg);
+        setToast({ message: msg, type: "error" });
       } else {
         const errMsg = err instanceof Error ? err.message : "Save failed";
         setError(errMsg);
         setToast({ message: errMsg, type: "error" });
       }
     } finally {
-      setLoading(false);
+      setMutating(false);
     }
   };
 
   const onDelete = async (id: string) => {
-    setLoading(true);
+    setMutating(true);
     setError(null);
     try {
       await apiFetch(`${active.path}/${id}`, { method: "DELETE" }, true);
@@ -442,7 +459,7 @@ export default function AdminPage() {
       setError(errMsg);
       setToast({ message: errMsg, type: "error" });
     } finally {
-      setLoading(false);
+      setMutating(false);
     }
   };
 
@@ -450,33 +467,33 @@ export default function AdminPage() {
     return (
       <div className="flex gap-3">
         <button
-          className="px-4 py-2 rounded-full bg-white text-black font-bold hover:-translate-y-0.5 transition"
+          className="project-btn project-btn-primary"
           onClick={onSubmit}
-          disabled={loading}
+          disabled={mutating}
         >
           {selectedId ? "Update" : "Create"}
         </button>
         <button
-          className="px-4 py-2 rounded-full border border-white/40 text-white hover:border-white transition"
+          className="project-btn project-btn-outline"
           onClick={onReset}
-          disabled={loading}
+          disabled={mutating}
         >
           Clear
         </button>
       </div>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, selectedId]);
+  }, [mutating, selectedId]);
 
   if (isLoading) {
-    return <div className="min-h-screen p-10 text-white">Loading...</div>;
+    return <div className="min-h-screen p-10 admin-page">Loading...</div>;
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen p-10 text-white flex flex-col gap-6">
+      <div className="min-h-screen p-10 admin-page flex flex-col gap-6">
         <h1 className="text-3xl font-extrabold">Admin Dashboard</h1>
-        <p className="text-white/80">Please log in to access admin features.</p>
+        <p className="text-slate-700">Please log in to access admin features.</p>
         <div className="flex gap-3">
           <LoginButton returnTo="/admin" />
         </div>
@@ -485,7 +502,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen p-10 text-white">
+    <div className="min-h-screen p-10 admin-page">
       {toast && (
         <div
           className={`fixed top-6 right-6 z-50 rounded-2xl px-4 py-3 border backdrop-blur ${
@@ -509,7 +526,7 @@ export default function AdminPage() {
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="px-4 py-2 rounded-full border border-white/40 text-white hover:border-white transition"
+            className="project-btn project-btn-outline"
           >
             Back to Home
           </Link>
@@ -522,11 +539,11 @@ export default function AdminPage() {
         {topTabs.map((tab) => (
           <button
             key={tab.key}
-            className={`px-4 py-2 rounded-full font-bold transition border ${
+            className={`admin-tab ${
               (tab.key === "about" && activeGroup === "about") ||
               (tab.resourceKey && active.key === tab.resourceKey)
-                ? "bg-white text-black border-white"
-                : "bg-white/10 text-white border-white/20 hover:border-white/70"
+                ? "active"
+                : ""
             }`}
             onClick={() => {
               if (tab.key === "about") {
@@ -550,10 +567,10 @@ export default function AdminPage() {
             return (
               <button
                 key={key}
-                className={`px-3 py-2 rounded-full text-sm font-semibold transition border ${
+                className={`admin-tab text-sm ${
                   active.key === key
-                    ? "bg-white text-black border-white"
-                    : "bg-white/10 text-white border-white/20 hover:border-white/70"
+                    ? "active"
+                    : ""
                 }`}
                 onClick={() => setActive(res)}
               >
@@ -566,20 +583,20 @@ export default function AdminPage() {
 
       {!isSpecialPanel && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="admin-card">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">{active.label} List</h2>
               <button
-                className="text-sm text-white/70 hover:text-white"
+                className="text-sm text-slate-700 hover:text-slate-900"
                 onClick={loadItems}
               >
                 Refresh
               </button>
             </div>
-            {error && <div className="text-red-300 mb-3">{error}</div>}
-            {loading && <div className="text-white/70">Loading...</div>}
-            {!loading && items.length === 0 && (
-              <div className="text-white/60">No items yet.</div>
+            {error && <div className="text-red-600 mb-3">{error}</div>}
+            {loadingList && <div className="text-slate-600">Loading...</div>}
+            {!loadingList && items.length === 0 && (
+              <div className="text-slate-600">No items yet.</div>
             )}
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
               {items.map((item) => {
@@ -587,19 +604,19 @@ export default function AdminPage() {
                 return (
                   <div
                     key={typedItem.id as string}
-                    className="rounded-2xl border border-white/10 bg-black/40 p-4"
+                    className="admin-item"
                   >
-                    <div className="text-xs text-white/50">
+                    <div className="text-xs text-slate-500">
                       ID: {String(typedItem.id)}
                     </div>
-                    <div className="mt-3 grid gap-2 text-sm text-white/85">
+                    <div className="mt-3 grid gap-2 text-sm text-slate-700">
                       {summaryFieldDefs.map((field) => (
                         <div
                           key={field.name}
                           className="flex items-start justify-between gap-4"
                         >
-                          <span className="text-white/50">{field.label}</span>
-                          <span className="text-right font-medium text-white/90">
+                          <span className="text-slate-500">{field.label}</span>
+                          <span className="text-right font-medium text-slate-900">
                             {renderFieldValue(field, typedItem[field.name])}
                           </span>
                         </div>
@@ -607,13 +624,13 @@ export default function AdminPage() {
                     </div>
                     <div className="flex gap-3 mt-3">
                       <button
-                        className="px-3 py-1 rounded-full bg-white text-black text-sm font-semibold"
+                        className="project-btn project-btn-primary"
                         onClick={() => onEdit(typedItem)}
                       >
                         Edit
                       </button>
                       <button
-                        className="px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
+                        className="project-btn project-btn-outline"
                         onClick={() => onDelete(typedItem.id as string)}
                       >
                         Delete
@@ -625,21 +642,21 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <div className="admin-card">
             <h2 className="text-xl font-bold mb-4">
               {selectedId ? "Edit Item" : "Create Item"}
             </h2>
             <div className="space-y-4">
-              {active.fields.map((field) => (
-                <FieldInput
-                  key={field.name}
-                  field={field}
-                  value={form[field.name]}
-                  onChange={(val) =>
-                    setForm((prev) => ({ ...prev, [field.name]: val }))
-                  }
-                />
-              ))}
+                  {active.fields.map((field) => (
+                    <FieldInput
+                      key={field.name}
+                      field={field}
+                      value={form[field.name]}
+                      onChange={(val) =>
+                        setFormState((prev) => ({ ...prev, [field.name]: val }))
+                      }
+                    />
+                  ))}
             </div>
             <div className="mt-6 flex items-center gap-3">{adminActions}</div>
           </div>
@@ -668,18 +685,16 @@ function FieldInput({
     const bilingual = (value ?? emptyBilingual) as Record<string, string>;
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">
-          {field.label}
-        </label>
+        <label className="admin-label">{field.label}</label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
-            className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
+            className="admin-input"
             placeholder="English"
             value={bilingual?.en || ""}
             onChange={(e) => onChange({ ...bilingual, en: e.target.value })}
           />
           <input
-            className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
+            className="admin-input"
             placeholder="French"
             value={bilingual?.fr || ""}
             onChange={(e) => onChange({ ...bilingual, fr: e.target.value })}
@@ -692,11 +707,9 @@ function FieldInput({
   if (field.type === "textarea") {
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">
-          {field.label}
-        </label>
+        <label className="admin-label">{field.label}</label>
         <textarea
-          className="rounded-xl bg-black/40 border border-white/20 px-3 py-2 min-h-[120px]"
+          className="admin-input min-h-[120px]"
           value={(value ?? "") as string}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -706,7 +719,7 @@ function FieldInput({
 
   if (field.type === "boolean") {
     return (
-      <label className="flex items-center gap-3 text-sm font-semibold text-white/80">
+      <label className="flex items-center gap-3 text-sm font-semibold text-slate-800">
         <input
           type="checkbox"
           checked={Boolean(value)}
@@ -720,12 +733,10 @@ function FieldInput({
   if (field.type === "date") {
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">
-          {field.label}
-        </label>
+        <label className="admin-label">{field.label}</label>
         <input
           type="datetime-local"
-          className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
+          className="admin-input"
           value={(value ?? "") as string}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -736,11 +747,9 @@ function FieldInput({
   if (field.type === "json") {
     return (
       <div className="grid gap-2">
-        <label className="text-sm font-semibold text-white/80">
-          {field.label}
-        </label>
+        <label className="admin-label">{field.label}</label>
         <textarea
-          className="rounded-xl bg-black/40 border border-white/20 px-3 py-2 min-h-[120px] font-mono text-xs"
+          className="admin-input min-h-[120px] font-mono text-xs"
           value={(value ?? "{}") as string}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -785,11 +794,9 @@ function FieldInput({
 
     return (
       <div className="grid gap-3">
-        <label className="text-sm font-semibold text-white/80">
-          {field.label}
-        </label>
+        <label className="admin-label">{field.label}</label>
         <div className="flex flex-col gap-2">
-          <label className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 hover:border-white/60 hover:bg-white/20 transition cursor-pointer w-fit">
+          <label className="project-btn project-btn-outline cursor-pointer w-fit">
             Upload Image
             <input
               type="file"
@@ -799,7 +806,7 @@ function FieldInput({
             />
           </label>
           <input
-            className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
+            className="admin-input"
             placeholder="Image URL"
             value={(value as string) ?? ""}
             onChange={(e) => onChange(e.target.value)}
@@ -809,17 +816,17 @@ function FieldInput({
               <Image
                 src={value as string}
                 alt="Preview"
-                className="rounded-xl border border-white/10 max-h-40 object-cover"
+                className="rounded-xl border border-slate-200 max-h-40 object-cover"
                 width={400}
                 height={160}
               />
             </div>
           ) : null}
           {uploading && (
-            <div className="text-xs text-white/60">Uploading...</div>
+            <div className="text-xs text-slate-600">Uploading...</div>
           )}
           {uploadError && (
-            <div className="text-xs text-red-300">{uploadError}</div>
+            <div className="text-xs text-red-600">{uploadError}</div>
           )}
         </div>
       </div>
@@ -830,12 +837,10 @@ function FieldInput({
 
   return (
     <div className="grid gap-2">
-      <label className="text-sm font-semibold text-white/80">
-        {field.label}
-      </label>
+      <label className="admin-label">{field.label}</label>
       <input
         type={type}
-        className="rounded-xl bg-black/40 border border-white/20 px-3 py-2"
+        className="admin-input"
         placeholder={field.placeholder}
         value={(value ?? "") as string}
         onChange={(e) => onChange(e.target.value)}
@@ -899,20 +904,20 @@ function TestimonialsPanel() {
   };
 
   return (
-    <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+    <div className="mt-10 admin-card">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Testimonials</h2>
         <button
-          className="text-sm text-white/70 hover:text-white"
+          className="text-sm text-slate-700 hover:text-slate-900"
           onClick={load}
         >
           Refresh
         </button>
       </div>
-      {error && <div className="text-red-300 mb-3">{error}</div>}
-      {loading && <div className="text-white/70">Loading...</div>}
+      {error && <div className="text-red-600 mb-3">{error}</div>}
+      {loading && <div className="text-slate-600">Loading...</div>}
       {!loading && items.length === 0 && (
-        <div className="text-white/60">No testimonials.</div>
+        <div className="text-slate-600">No testimonials.</div>
       )}
       <div className="space-y-3">
         {items.map((item) => {
@@ -920,26 +925,26 @@ function TestimonialsPanel() {
           return (
             <div
               key={typedItem.id as string}
-              className="rounded-2xl border border-white/10 bg-black/40 p-4"
+              className="admin-item"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <div className="font-semibold">{String(typedItem.name)}</div>
-                  <div className="text-xs text-white/60">
+                  <div className="text-xs text-slate-600">
                     {String(typedItem.role || "")}{" "}
                     {String(typedItem.company || "")}
                   </div>
                 </div>
-                <div className="text-xs text-white/70">
+                <div className="text-xs text-slate-700">
                   {String(typedItem.status)}
                 </div>
               </div>
-              <p className="text-sm text-white/80 mt-2">
+              <p className="text-sm text-slate-700 mt-2">
                 {String(typedItem.content)}
               </p>
               <div className="flex gap-3 mt-3">
                 <button
-                  className="px-3 py-1 rounded-full bg-white text-black text-sm font-semibold"
+                  className="project-btn project-btn-primary"
                   onClick={() =>
                     updateStatus(typedItem.id as string, "approve")
                   }
@@ -947,13 +952,13 @@ function TestimonialsPanel() {
                   Approve
                 </button>
                 <button
-                  className="px-3 py-1 rounded-full border border-white/40 text-white text-sm"
+                  className="project-btn project-btn-outline"
                   onClick={() => updateStatus(typedItem.id as string, "reject")}
                 >
                   Reject
                 </button>
                 <button
-                  className="px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
+                  className="project-btn project-btn-outline"
                   onClick={() => onDelete(typedItem.id as string)}
                 >
                   Delete
@@ -1005,20 +1010,20 @@ function MessagesPanel() {
   };
 
   return (
-    <div className="mt-10 rounded-3xl border border-white/10 bg-white/5 p-6">
+    <div className="mt-10 admin-card">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold">Contact Messages</h2>
         <button
-          className="text-sm text-white/70 hover:text-white"
+          className="text-sm text-slate-700 hover:text-slate-900"
           onClick={load}
         >
           Refresh
         </button>
       </div>
-      {error && <div className="text-red-300 mb-3">{error}</div>}
-      {loading && <div className="text-white/70">Loading...</div>}
+      {error && <div className="text-red-600 mb-3">{error}</div>}
+      {loading && <div className="text-slate-600">Loading...</div>}
       {!loading && items.length === 0 && (
-        <div className="text-white/60">No messages.</div>
+        <div className="text-slate-600">No messages.</div>
       )}
       <div className="space-y-3">
         {items.map((item) => {
@@ -1026,19 +1031,19 @@ function MessagesPanel() {
           return (
             <div
               key={typedItem.id as string}
-              className="rounded-2xl border border-white/10 bg-black/40 p-4"
+              className="admin-item"
             >
               <div className="font-semibold">
                 {String(typedItem.name)} ? {String(typedItem.email)}
               </div>
-              <div className="text-xs text-white/60">
+              <div className="text-xs text-slate-600">
                 {(typedItem.subject as string) || "(No subject)"}
               </div>
-              <p className="text-sm text-white/80 mt-2">
+              <p className="text-sm text-slate-700 mt-2">
                 {String(typedItem.message)}
               </p>
               <button
-                className="mt-3 px-3 py-1 rounded-full border border-red-400 text-red-300 text-sm"
+                className="project-btn project-btn-outline mt-3"
                 onClick={() => onDelete(typedItem.id as string)}
               >
                 Delete

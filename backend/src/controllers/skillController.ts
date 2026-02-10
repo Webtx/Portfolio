@@ -9,7 +9,12 @@ export const listSkills = asyncHandler(async (_req, res) => {
 
 export const createSkill = asyncHandler(async (req, res) => {
   const data = skillCreateSchema.parse(req.body);
-  const skill = await prisma.skill.create({ data });
+  const skill = await prisma.skill.create({
+    data: {
+      ...data,
+      name: data.name ?? { en: "", fr: "" }
+    }
+  });
   res.status(201).json(skill);
 });
 

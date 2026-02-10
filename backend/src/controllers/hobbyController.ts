@@ -9,7 +9,12 @@ export const listHobbies = asyncHandler(async (_req, res) => {
 
 export const createHobby = asyncHandler(async (req, res) => {
   const data = hobbyCreateSchema.parse(req.body);
-  const hobby = await prisma.hobby.create({ data });
+  const hobby = await prisma.hobby.create({
+    data: {
+      ...data,
+      name: data.name ?? { en: "", fr: "" }
+    }
+  });
   res.status(201).json(hobby);
 });
 
