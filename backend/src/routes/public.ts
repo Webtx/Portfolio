@@ -8,6 +8,7 @@ import { listHobbies } from "../controllers/hobbyController";
 import { getContactInfo } from "../controllers/contactInfoController";
 import { createMessage } from "../controllers/messageController";
 import { listApprovedTestimonials, submitTestimonial } from "../controllers/testimonialController";
+import { publicMessageLimiter, publicWriteLimiter } from "../middlewares/rateLimit";
 
 export const publicRouter = Router();
 
@@ -20,5 +21,5 @@ publicRouter.get("/hobbies", listHobbies);
 publicRouter.get("/contact-info", getContactInfo);
 publicRouter.get("/testimonials", listApprovedTestimonials);
 
-publicRouter.post("/messages", createMessage);
-publicRouter.post("/testimonials", submitTestimonial);
+publicRouter.post("/messages", publicMessageLimiter, createMessage);
+publicRouter.post("/testimonials", publicWriteLimiter, submitTestimonial);

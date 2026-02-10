@@ -44,7 +44,6 @@ type BilingualText = { en: string; fr: string };
 type Skill = {
   id: string;
   name: BilingualText;
-  level?: number | null;
   category?: BilingualText | null;
 };
 
@@ -714,7 +713,7 @@ export default function Home() {
                     </button>
                 </div>
                 {contactNotice && (
-                  <p style={{ marginTop: "0.6rem", color: "#d8f3dc" }}>
+                  <p style={{ marginTop: "0.6rem", color: "#0f172a", fontWeight: 700 }}>
                     {contactNotice}
                   </p>
                 )}

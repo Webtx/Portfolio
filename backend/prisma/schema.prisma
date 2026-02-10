@@ -18,7 +18,6 @@ enum TestimonialStatus {
 model Skill {
   id        String   @id @default(uuid())
   name      Json
-  level     Int?
   category  Json?
   order     Int      @default(0)
   createdAt DateTime @default(now())
@@ -99,7 +98,6 @@ model Message {
   id        String   @id @default(uuid())
   name      String
   email     String
-  subject   String?
   message   String
   createdAt DateTime @default(now())
 }

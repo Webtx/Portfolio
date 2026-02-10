@@ -49,11 +49,10 @@ const resources: ResourceDef[] = [
     path: "/admin/skills",
     fields: [
       { name: "name", label: "Name", type: "bilingual" },
-      { name: "level", label: "Level (1-10)", type: "number" },
       { name: "category", label: "Category", type: "bilingual" },
       { name: "order", label: "Order", type: "number" },
     ],
-    summaryFields: ["name", "category", "level", "order"],
+    summaryFields: ["name", "category", "order"],
   },
   {
     key: "projects",
@@ -1037,7 +1036,7 @@ function MessagesPanel() {
                 {String(typedItem.name)} ? {String(typedItem.email)}
               </div>
               <div className="text-xs text-slate-600">
-                {(typedItem.subject as string) || "(No subject)"}
+                {(typedItem.subject as string) || ""}
               </div>
               <p className="text-sm text-slate-700 mt-2">
                 {String(typedItem.message)}
