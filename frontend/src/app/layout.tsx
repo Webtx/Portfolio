@@ -5,8 +5,8 @@ import "./globals.css";
 import "@/lib/hint.min.css";
 
 export const metadata: Metadata = {
-  title: "Auth0 Next.js App",
-  description: "Next.js app with Auth0 authentication",
+  title: "Annie's Portfolio",
+  description: "Annie's full-stack developer portfolio",
 };
 
 export default function RootLayout({
