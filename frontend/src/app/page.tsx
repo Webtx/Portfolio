@@ -35,7 +35,14 @@ import {
   SiSwift,
   SiDocker,
 } from "react-icons/si";
-import { FaJava, FaDatabase, FaHashtag, FaGithub, FaLinkedin, FaFilePdf } from "react-icons/fa";
+import {
+  FaJava,
+  FaDatabase,
+  FaHashtag,
+  FaGithub,
+  FaLinkedin,
+  FaFilePdf,
+} from "react-icons/fa";
 import { IconType } from "react-icons";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -301,7 +308,6 @@ export default function Home() {
       aboutMe: "About Me",
       projects: "Projects",
       testimonials: "Testimonials",
-      myProjects: "My Projects",
       loadingProfile: "Loading your profile...",
       loadingProjects: "Loading projects...",
       loadingTestimonials: "Loading testimonials...",
@@ -343,7 +349,6 @@ export default function Home() {
       aboutMe: "À propos",
       projects: "Projets",
       testimonials: "Témoignages",
-      myProjects: "Mes projets",
       loadingProfile: "Chargement de votre profil...",
       loadingProjects: "Chargement des projets...",
       loadingTestimonials: "Chargement des témoignages...",
@@ -501,7 +506,6 @@ export default function Home() {
     testimonials,
   ]);
 
-
   const submitTestimonial = async () => {
     if (!testimonialName.trim() || !testimonialContent.trim()) {
       setTestimonialStatus("error");
@@ -647,7 +651,11 @@ export default function Home() {
         {/* LEFT: Auth Controls + Language Toggle */}
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           {/* Auth Controls */}
-          {isAuthenticated ? <LogoutButton /> : <LoginButton returnTo="/admin" />}
+          {isAuthenticated ? (
+            <LogoutButton />
+          ) : (
+            <LoginButton returnTo="/admin" />
+          )}
 
           {/* Language Toggle Switch */}
           <div
@@ -667,8 +675,7 @@ export default function Home() {
             <button
               style={{
                 padding: "0.5rem 1rem",
-                background:
-                  lang === "en" ? "#0f172a" : "transparent",
+                background: lang === "en" ? "#0f172a" : "transparent",
                 color: lang === "en" ? "#ffffff" : "#0f172a",
                 border: "none",
                 borderRadius: "16px",
@@ -687,8 +694,7 @@ export default function Home() {
             <button
               style={{
                 padding: "0.5rem 1rem",
-                background:
-                  lang === "fr" ? "#0f172a" : "transparent",
+                background: lang === "fr" ? "#0f172a" : "transparent",
                 color: lang === "fr" ? "#ffffff" : "#0f172a",
                 border: "none",
                 borderRadius: "16px",
@@ -736,18 +742,24 @@ export default function Home() {
               <div className="profile-name-section">
                 <div className="profile-name-row">
                   <h1 className="profile-name">Annie Yang</h1>
-                    <button
-                      className="get-in-touch-btn"
-                      onClick={() => {
-                        setContactStatus("idle");
-                        setShowContactForm(true);
-                      }}
-                    >
-                      {ui.getInTouch}
-                    </button>
+                  <button
+                    className="get-in-touch-btn"
+                    onClick={() => {
+                      setContactStatus("idle");
+                      setShowContactForm(true);
+                    }}
+                  >
+                    {ui.getInTouch}
+                  </button>
                 </div>
                 {contactNotice && (
-                  <p style={{ marginTop: "0.6rem", color: "#0f172a", fontWeight: 700 }}>
+                  <p
+                    style={{
+                      marginTop: "0.6rem",
+                      color: "#0f172a",
+                      fontWeight: 700,
+                    }}
+                  >
                     {contactNotice}
                   </p>
                 )}
@@ -756,9 +768,7 @@ export default function Home() {
             </div>
 
             <div className="profile-info">
-              <div
-                className="neo-card profile-bio-card animate-blur-in-500"
-              >
+              <div className="neo-card profile-bio-card animate-blur-in-500">
                 <p className="bio" style={{ margin: 0 }}>
                   {summary[lang]}
                 </p>
@@ -807,26 +817,26 @@ export default function Home() {
           {/* RIGHT SIDE - CONTENT */}
           <div className="content-area">
             {/* NAVIGATION TABS */}
-                <div className="nav-tabs" data-aos="fade-down">
-                  <button
-                    className={`nav-tab ${activeTab === "about" ? "active" : ""}`}
-                    onClick={() => setActiveTab("about")}
-                  >
-                    {ui.aboutMe}
-                  </button>
-                  <button
-                    className={`nav-tab ${activeTab === "projects" ? "active" : ""}`}
-                    onClick={() => setActiveTab("projects")}
-                  >
-                    {ui.projects}
-                  </button>
-                  <button
-                    className={`nav-tab ${activeTab === "testimonials" ? "active" : ""}`}
-                    onClick={() => setActiveTab("testimonials")}
-                  >
-                    {ui.testimonials}
-                  </button>
-                </div>
+            <div className="nav-tabs" data-aos="fade-down">
+              <button
+                className={`nav-tab ${activeTab === "about" ? "active" : ""}`}
+                onClick={() => setActiveTab("about")}
+              >
+                {ui.aboutMe}
+              </button>
+              <button
+                className={`nav-tab ${activeTab === "projects" ? "active" : ""}`}
+                onClick={() => setActiveTab("projects")}
+              >
+                {ui.projects}
+              </button>
+              <button
+                className={`nav-tab ${activeTab === "testimonials" ? "active" : ""}`}
+                onClick={() => setActiveTab("testimonials")}
+              >
+                {ui.testimonials}
+              </button>
+            </div>
 
             {/* CONTENT PANEL */}
             <div className="content-panel">
@@ -924,7 +934,9 @@ export default function Home() {
                                               />
                                             ) : (
                                               <span className="skill-fallback">
-                                                {label.slice(0, 2).toUpperCase()}
+                                                {label
+                                                  .slice(0, 2)
+                                                  .toUpperCase()}
                                               </span>
                                             )}
                                           </span>
@@ -932,9 +944,9 @@ export default function Home() {
                                       );
                                     })}
                                     {groupSkills.length === 0 && (
-                              <span style={{ color: "#475569" }}>
-                                {ui.noSkills}
-                              </span>
+                                      <span style={{ color: "#475569" }}>
+                                        {ui.noSkills}
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -1074,10 +1086,7 @@ export default function Home() {
                           }}
                         >
                           {hobbies.map((hobby) => (
-                            <span
-                              key={hobby.id}
-                              className="neo-chip"
-                            >
+                            <span key={hobby.id} className="neo-chip">
                               {
                                 (hobby.name?.[lang] ||
                                   hobby.name?.en ||
@@ -1099,9 +1108,6 @@ export default function Home() {
 
               {activeTab === "projects" && (
                 <div id="projects-container" className="section-background">
-                  <h2 style={{ fontSize: "1.8rem", marginBottom: "1.5rem" }}>
-                    {ui.myProjects}
-                  </h2>
                   {loadingProjects ? (
                     <p style={{ color: "#475569" }}>{ui.loadingProjects}</p>
                   ) : projects.length === 0 ? (
@@ -1218,7 +1224,8 @@ export default function Home() {
                                     {(() => {
                                       const withIcon: string[] = [];
                                       const withoutIcon: string[] = [];
-                                      for (const tech of project.techStack || []) {
+                                      for (const tech of project.techStack ||
+                                        []) {
                                         const hasIcon =
                                           Boolean(getSkillIconFile(tech)) ||
                                           Boolean(getSkillIcon(tech));
@@ -1238,7 +1245,8 @@ export default function Home() {
                                             }}
                                           >
                                             {(() => {
-                                              const file = getSkillIconFile(tech);
+                                              const file =
+                                                getSkillIconFile(tech);
                                               if (file) {
                                                 return (
                                                   <Image
@@ -1329,9 +1337,7 @@ export default function Home() {
                   )}
 
                   {loadingTestimonials ? (
-                    <p style={{ color: "#475569" }}>
-                      {ui.loadingTestimonials}
-                    </p>
+                    <p style={{ color: "#475569" }}>{ui.loadingTestimonials}</p>
                   ) : testimonials.length === 0 ? (
                     <p style={{ color: "#475569" }}>{ui.noTestimonials}</p>
                   ) : (
@@ -1617,7 +1623,9 @@ export default function Home() {
                 onClick={submitTestimonial}
                 disabled={testimonialStatus === "submitting"}
                 className="project-btn project-btn-primary"
-                style={{ opacity: testimonialStatus === "submitting" ? 0.7 : 1 }}
+                style={{
+                  opacity: testimonialStatus === "submitting" ? 0.7 : 1,
+                }}
               >
                 {testimonialStatus === "submitting"
                   ? ui.testimonialSubmitting
@@ -1630,4 +1638,3 @@ export default function Home() {
     </>
   );
 }
-

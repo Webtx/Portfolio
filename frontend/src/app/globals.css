@@ -816,6 +816,8 @@ body {
 
 #about-container {
   background-image: url("/backgrounds/Grad_03.png");
+  background-repeat: no-repeat;
+  background-position: top center;
 }
 
 #projects-container {
