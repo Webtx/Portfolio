@@ -35,6 +35,7 @@ type ResourceDef = {
 };
 
 type FormState = Record<string, unknown>;
+type FormErrors = Record<string, string>;
 
 type TopTab = {
   key: string;
@@ -165,6 +166,23 @@ const inputToIso = (value?: string) => {
 };
 
 const emptyBilingual = { en: "", fr: "" };
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const looksLikeEmailField = (field: FieldDef) =>
+  field.name.toLowerCase().includes("email") ||
+  field.label.toLowerCase().includes("email");
+
+const looksLikeUrlField = (field: FieldDef) =>
+  field.type === "image" || field.name.toLowerCase().includes("url");
+
+const isValidUrl = (value: string) => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
 
 function buildEmptyForm(fields: FieldDef[]): FormState {
   const data: FormState = {};
@@ -233,6 +251,60 @@ function buildPayload(fields: FieldDef[], form: Record<string, unknown>) {
   return data;
 }
 
+function validateForm(fields: FieldDef[], form: FormState): FormErrors {
+  const errors: FormErrors = {};
+
+  for (const field of fields) {
+    const value = form[field.name];
+    if (value === null || value === undefined || value === "") continue;
+
+    if (field.type === "number" && !Number.isFinite(Number(value))) {
+      errors[field.name] = "Enter a valid number.";
+      continue;
+    }
+
+    if (field.type === "date") {
+      const parsed = new Date(String(value));
+      if (Number.isNaN(parsed.getTime())) {
+        errors[field.name] = "Enter a valid date.";
+      }
+      continue;
+    }
+
+    if (field.type === "json") {
+      try {
+        JSON.parse(String(value));
+      } catch {
+        errors[field.name] = "Enter valid JSON.";
+      }
+      continue;
+    }
+
+    if (
+      (field.type === "text" || field.type === "textarea") &&
+      looksLikeEmailField(field)
+    ) {
+      const email = String(value).trim();
+      if (email && !emailRegex.test(email)) {
+        errors[field.name] = "Enter a valid email address.";
+      }
+      continue;
+    }
+
+    if (
+      (field.type === "text" || field.type === "image") &&
+      looksLikeUrlField(field)
+    ) {
+      const url = String(value).trim();
+      if (url && !isValidUrl(url)) {
+        errors[field.name] = "Enter a valid URL starting with http:// or https://.";
+      }
+    }
+  }
+
+  return errors;
+}
+
 export default function AdminPage() {
   const { user, isLoading } = useUser();
   const getResourceByKey = (key: string) =>
@@ -251,6 +323,7 @@ export default function AdminPage() {
   } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(buildEmptyForm(active.fields));
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const formRef = useRef<FormState>(buildEmptyForm(active.fields));
 
   const setFormState = (
@@ -326,6 +399,7 @@ export default function AdminPage() {
     const empty = buildEmptyForm(active.fields);
     formRef.current = empty;
     setForm(empty);
+    setFormErrors({});
     setSelectedId(null);
   }, [active]);
 
@@ -362,6 +436,7 @@ export default function AdminPage() {
     );
     formRef.current = next;
     setForm(next);
+    setFormErrors({});
   };
 
   const onReset = () => {
@@ -369,6 +444,7 @@ export default function AdminPage() {
     const empty = buildEmptyForm(active.fields);
     formRef.current = empty;
     setForm(empty);
+    setFormErrors({});
   };
 
   const onSubmit = async () => {
@@ -376,6 +452,15 @@ export default function AdminPage() {
     setError(null);
     try {
       const currentForm = formRef.current;
+      const errors = validateForm(active.fields, currentForm);
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        const msg = "Fix the highlighted fields and try again.";
+        setError(msg);
+        setToast({ message: msg, type: "error" });
+        return;
+      }
+      setFormErrors({});
       console.log("Admin submit form", {
         resource: active.key,
         selectedId,
@@ -460,6 +545,17 @@ export default function AdminPage() {
     } finally {
       setMutating(false);
     }
+  };
+
+  const onFieldChange = (fieldName: string, val: unknown) => {
+    if (formErrors[fieldName]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[fieldName];
+        return next;
+      });
+    }
+    setFormState((prev) => ({ ...prev, [fieldName]: val }));
   };
 
   const adminActions = useMemo(() => {
@@ -651,9 +747,8 @@ export default function AdminPage() {
                       key={field.name}
                       field={field}
                       value={form[field.name]}
-                      onChange={(val) =>
-                        setFormState((prev) => ({ ...prev, [field.name]: val }))
-                      }
+                      error={formErrors[field.name]}
+                      onChange={(val) => onFieldChange(field.name, val)}
                     />
                   ))}
             </div>
@@ -671,10 +766,12 @@ export default function AdminPage() {
 function FieldInput({
   field,
   value,
+  error,
   onChange,
 }: {
   field: FieldDef;
   value: unknown;
+  error?: string;
   onChange: (val: unknown) => void;
 }) {
   const [uploading, setUploading] = useState(false);
@@ -687,18 +784,19 @@ function FieldInput({
         <label className="admin-label">{field.label}</label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <input
-            className="admin-input"
+            className={`admin-input ${error ? "border-red-500" : ""}`}
             placeholder="English"
             value={bilingual?.en || ""}
             onChange={(e) => onChange({ ...bilingual, en: e.target.value })}
           />
           <input
-            className="admin-input"
+            className={`admin-input ${error ? "border-red-500" : ""}`}
             placeholder="French"
             value={bilingual?.fr || ""}
             onChange={(e) => onChange({ ...bilingual, fr: e.target.value })}
           />
         </div>
+        {error && <div className="text-xs text-black">{error}</div>}
       </div>
     );
   }
@@ -708,10 +806,11 @@ function FieldInput({
       <div className="grid gap-2">
         <label className="admin-label">{field.label}</label>
         <textarea
-          className="admin-input min-h-[120px]"
+          className={`admin-input min-h-[120px] ${error ? "border-red-500" : ""}`}
           value={(value ?? "") as string}
           onChange={(e) => onChange(e.target.value)}
         />
+        {error && <div className="text-xs text-black">{error}</div>}
       </div>
     );
   }
@@ -735,10 +834,11 @@ function FieldInput({
         <label className="admin-label">{field.label}</label>
         <input
           type="datetime-local"
-          className="admin-input"
+          className={`admin-input ${error ? "border-red-500" : ""}`}
           value={(value ?? "") as string}
           onChange={(e) => onChange(e.target.value)}
         />
+        {error && <div className="text-xs text-black">{error}</div>}
       </div>
     );
   }
@@ -748,10 +848,11 @@ function FieldInput({
       <div className="grid gap-2">
         <label className="admin-label">{field.label}</label>
         <textarea
-          className="admin-input min-h-[120px] font-mono text-xs"
+          className={`admin-input min-h-[120px] font-mono text-xs ${error ? "border-red-500" : ""}`}
           value={(value ?? "{}") as string}
           onChange={(e) => onChange(e.target.value)}
         />
+        {error && <div className="text-xs text-black">{error}</div>}
       </div>
     );
   }
@@ -805,7 +906,7 @@ function FieldInput({
             />
           </label>
           <input
-            className="admin-input"
+            className={`admin-input ${error ? "border-red-500" : ""}`}
             placeholder="Image URL"
             value={(value as string) ?? ""}
             onChange={(e) => onChange(e.target.value)}
@@ -827,23 +928,29 @@ function FieldInput({
           {uploadError && (
             <div className="text-xs text-red-600">{uploadError}</div>
           )}
+          {error && <div className="text-xs text-black">{error}</div>}
         </div>
       </div>
     );
   }
 
-  const type = field.type === "number" ? "number" : "text";
+  const type = field.type === "number"
+    ? "number"
+    : looksLikeEmailField(field)
+      ? "email"
+      : "text";
 
   return (
     <div className="grid gap-2">
       <label className="admin-label">{field.label}</label>
       <input
         type={type}
-        className="admin-input"
+        className={`admin-input ${error ? "border-red-500" : ""}`}
         placeholder={field.placeholder}
         value={(value ?? "") as string}
         onChange={(e) => onChange(e.target.value)}
       />
+      {error && <div className="text-xs text-black">{error}</div>}
     </div>
   );
 }

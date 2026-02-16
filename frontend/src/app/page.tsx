@@ -38,6 +38,8 @@ import {
 import { FaJava, FaDatabase, FaHashtag, FaGithub, FaLinkedin, FaFilePdf } from "react-icons/fa";
 import { IconType } from "react-icons";
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type TabType = "about" | "projects" | "testimonials";
 type BilingualText = { en: string; fr: string };
 
@@ -281,6 +283,7 @@ export default function Home() {
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [contactNotice, setContactNotice] = useState("");
+  const [contactErrorMessage, setContactErrorMessage] = useState("");
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   const [testimonialName, setTestimonialName] = useState("");
   const [testimonialContent, setTestimonialContent] = useState("");
@@ -322,6 +325,8 @@ export default function Home() {
       contactSend: "Send",
       contactSending: "Sending...",
       contactError: "Please fill out name, email, and message.",
+      contactEmailError: "Please enter a valid email address.",
+      contactSubmitError: "Failed to send message. Please try again.",
       testimonialAdd: "Share a testimonial",
       testimonialName: "Your name",
       testimonialComment: "Your comment",
@@ -362,6 +367,8 @@ export default function Home() {
       contactSend: "Envoyer",
       contactSending: "Envoi...",
       contactError: "Veuillez remplir le nom, le courriel et le message.",
+      contactEmailError: "Veuillez saisir une adresse courriel valide.",
+      contactSubmitError: "Impossible d'envoyer le message. Veuillez reessayer.",
       testimonialAdd: "Partager un témoignage",
       testimonialName: "Votre nom",
       testimonialComment: "Votre commentaire",
@@ -525,29 +532,56 @@ export default function Home() {
   };
 
   const submitContact = async () => {
-    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) {
+    const name = contactName.trim();
+    const email = contactEmail.trim();
+    const message = contactMessage.trim();
+
+    if (!name || !email || !message) {
+      setContactErrorMessage(ui.contactError);
+      setContactStatus("error");
+      return;
+    }
+    if (!emailRegex.test(email)) {
+      setContactErrorMessage(ui.contactEmailError);
       setContactStatus("error");
       return;
     }
     setContactStatus("submitting");
     setContactNotice("");
+    setContactErrorMessage("");
     try {
-      await fetch(`${API_BASE_URL}/public/messages`, {
+      const res = await fetch(`${API_BASE_URL}/public/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: contactName.trim(),
-          email: contactEmail.trim(),
-          message: contactMessage.trim(),
+          name,
+          email,
+          message,
         }),
       });
+
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const json = await res.json();
+          throw new Error(
+            json?.error?.message || json?.message || ui.contactSubmitError,
+          );
+        }
+        throw new Error(ui.contactSubmitError);
+      }
+
       setContactStatus("success");
       setContactName("");
       setContactEmail("");
       setContactMessage("");
       setShowContactForm(false);
+      setContactErrorMessage("");
       setContactNotice("Message sent! I will get back to you soon.");
-    } catch {
+    } catch (err: unknown) {
+      const errMsg =
+        err instanceof Error && err.message ? err.message : ui.contactSubmitError;
+      setContactErrorMessage(errMsg);
       setContactStatus("error");
     }
   };
@@ -1436,20 +1470,32 @@ export default function Home() {
             <div className="modal-fields">
               <input
                 value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
+                onChange={(e) => {
+                  setContactName(e.target.value);
+                  if (contactStatus === "error") setContactStatus("idle");
+                  if (contactErrorMessage) setContactErrorMessage("");
+                }}
                 placeholder={ui.contactName}
                 className="modal-input"
               />
               <input
                 value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
+                onChange={(e) => {
+                  setContactEmail(e.target.value);
+                  if (contactStatus === "error") setContactStatus("idle");
+                  if (contactErrorMessage) setContactErrorMessage("");
+                }}
                 placeholder={ui.contactEmail}
                 type="email"
                 className="modal-input"
               />
               <textarea
                 value={contactMessage}
-                onChange={(e) => setContactMessage(e.target.value)}
+                onChange={(e) => {
+                  setContactMessage(e.target.value);
+                  if (contactStatus === "error") setContactStatus("idle");
+                  if (contactErrorMessage) setContactErrorMessage("");
+                }}
                 placeholder={ui.contactMessage}
                 rows={5}
                 className="modal-input modal-textarea"
@@ -1457,8 +1503,8 @@ export default function Home() {
             </div>
 
             {contactStatus === "error" && (
-              <p style={{ color: "#ff9b9b", marginTop: "0.8rem" }}>
-                {ui.contactError}
+              <p style={{ color: "#000000", marginTop: "0.8rem" }}>
+                {contactErrorMessage || ui.contactError}
               </p>
             )}
 
