@@ -416,16 +416,21 @@ export default function Home() {
           ? ui.contactSubmitError
           : "";
 
-  const scrollToTop = () => {
-    contentPanelRef.current?.scrollTo({ top: 0, behavior: "auto" });
-    window.scrollTo({ top: 0, behavior: "auto" });
+  const navTabsRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollTabToTop = () => {
+    const panel = contentPanelRef.current;
+    if (panel && panel.scrollHeight > panel.clientHeight + 1) {
+      panel.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+    navTabsRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
   };
 
-  useEffect(() => {
-    const raf = requestAnimationFrame(scrollToTop);
-    return () => cancelAnimationFrame(raf);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  const switchTab = (tab: TabType) => {
+    setActiveTab(tab);
+    requestAnimationFrame(() => requestAnimationFrame(scrollTabToTop));
+  };
 
   const skillsByCategory = useMemo(() => {
     const grouped: Record<string, Skill[]> = {
@@ -755,7 +760,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="app-container" style={{ paddingTop: "120px" }}>
+      <div className="app-container">
         <div className="portfolio-wrapper">
           {/* LEFT SIDEBAR - PROFILE */}
           <div className="profile-sidebar" data-aos="fade-right">
@@ -849,31 +854,22 @@ export default function Home() {
           {/* RIGHT SIDE - CONTENT */}
           <div className="content-area">
             {/* NAVIGATION TABS */}
-            <div className="nav-tabs" data-aos="fade-down">
+            <div className="nav-tabs" data-aos="fade-down" ref={navTabsRef}>
               <button
                 className={`nav-tab ${activeTab === "about" ? "active" : ""}`}
-                onClick={() => {
-                  scrollToTop();
-                  setActiveTab("about");
-                }}
+                onClick={() => switchTab("about")}
               >
                 {ui.aboutMe}
               </button>
               <button
                 className={`nav-tab ${activeTab === "projects" ? "active" : ""}`}
-                onClick={() => {
-                  scrollToTop();
-                  setActiveTab("projects");
-                }}
+                onClick={() => switchTab("projects")}
               >
                 {ui.projects}
               </button>
               <button
                 className={`nav-tab ${activeTab === "testimonials" ? "active" : ""}`}
-                onClick={() => {
-                  scrollToTop();
-                  setActiveTab("testimonials");
-                }}
+                onClick={() => switchTab("testimonials")}
               >
                 {ui.testimonials}
               </button>

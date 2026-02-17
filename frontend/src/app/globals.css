@@ -235,6 +235,7 @@ body {
   top: 0;
   z-index: 2;
   box-shadow: 4px 4px 0 0 #1e293b;
+  scroll-margin-top: 90px;
 }
 
 .nav-tab {
@@ -693,6 +694,11 @@ body {
 }
 
 @media (max-width: 1200px) {
+  .floating-shape,
+  .topbar-shape {
+    display: none;
+  }
+
   body {
     overflow-y: auto;
   }
@@ -704,6 +710,43 @@ body {
 
   .profile-sidebar {
     max-width: 100%;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .profile-avatar-wrap {
+    width: 200px;
+    height: 200px;
+    top: 0;
+  }
+
+  .profile-name-section {
+    margin-top: 0;
+    align-items: center;
+  }
+
+  .profile-name-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+
+  .profile-name {
+    white-space: normal;
+  }
+
+  .profile-bio-card {
+    margin-top: 0;
+    max-width: 100%;
+    min-height: auto;
+  }
+
+  .nav-tabs {
+    margin-top: 1.5rem;
   }
 
   .content-area {
