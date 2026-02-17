@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AOS from "aos";
 import Image from "next/image";
 import LoginButton from "@/components/auth/LoginButton";
@@ -302,6 +302,8 @@ export default function Home() {
     "idle" | "submitting" | "success" | "error"
   >("idle");
   const [resume, setResume] = useState<Resume | null>(null);
+
+  const contentPanelRef = useRef<HTMLDivElement | null>(null);
   const summary = {
     en: "Hello, I'm Annie. I like designing and building clean, user-friendly experiences, and I enjoy artistic projects that blend creativity with technology.",
     fr: "Bonjour, je m'appelle Annie. J'aime concevoir et créer des expériences claires et conviviales, et j'apprécie les projets artistiques qui allient créativité et technologie.",
@@ -413,6 +415,17 @@ export default function Home() {
         : contactErrorKey === "submit_failed"
           ? ui.contactSubmitError
           : "";
+
+  const scrollToTop = () => {
+    contentPanelRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, behavior: "auto" });
+  };
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(scrollToTop);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const skillsByCategory = useMemo(() => {
     const grouped: Record<string, Skill[]> = {
@@ -838,26 +851,35 @@ export default function Home() {
             <div className="nav-tabs" data-aos="fade-down">
               <button
                 className={`nav-tab ${activeTab === "about" ? "active" : ""}`}
-                onClick={() => setActiveTab("about")}
+                onClick={() => {
+                  scrollToTop();
+                  setActiveTab("about");
+                }}
               >
                 {ui.aboutMe}
               </button>
               <button
                 className={`nav-tab ${activeTab === "projects" ? "active" : ""}`}
-                onClick={() => setActiveTab("projects")}
+                onClick={() => {
+                  scrollToTop();
+                  setActiveTab("projects");
+                }}
               >
                 {ui.projects}
               </button>
               <button
                 className={`nav-tab ${activeTab === "testimonials" ? "active" : ""}`}
-                onClick={() => setActiveTab("testimonials")}
+                onClick={() => {
+                  scrollToTop();
+                  setActiveTab("testimonials");
+                }}
               >
                 {ui.testimonials}
               </button>
             </div>
 
             {/* CONTENT PANEL */}
-            <div className="content-panel">
+            <div className="content-panel" ref={contentPanelRef}>
               {activeTab === "about" && (
                 <div
                   id="about-container"
