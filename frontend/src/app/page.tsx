@@ -281,7 +281,9 @@ export default function Home() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loadingTestimonials, setLoadingTestimonials] = useState(false);
-  const [testimonialNotice, setTestimonialNotice] = useState("");
+  const [testimonialNoticeKey, setTestimonialNoticeKey] = useState<
+    "" | "submitted" | "submit_error"
+  >("");
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -289,8 +291,10 @@ export default function Home() {
   const [contactStatus, setContactStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
-  const [contactNotice, setContactNotice] = useState("");
-  const [contactErrorMessage, setContactErrorMessage] = useState("");
+  const [contactNoticeKey, setContactNoticeKey] = useState<"" | "sent">("");
+  const [contactErrorKey, setContactErrorKey] = useState<
+    "" | "missing_fields" | "invalid_email" | "submit_failed"
+  >("");
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   const [testimonialName, setTestimonialName] = useState("");
   const [testimonialContent, setTestimonialContent] = useState("");
@@ -333,6 +337,7 @@ export default function Home() {
       contactError: "Please fill out name, email, and message.",
       contactEmailError: "Please enter a valid email address.",
       contactSubmitError: "Failed to send message. Please try again.",
+      contactSentNotice: "Message sent! I will get back to you soon.",
       testimonialAdd: "Share a testimonial",
       testimonialName: "Your name",
       testimonialComment: "Your comment",
@@ -340,6 +345,8 @@ export default function Home() {
       testimonialSubmit: "Submit",
       testimonialSubmitting: "Sending...",
       testimonialError: "Please enter your name and comment.",
+      testimonialSubmittedNotice: "Thanks! Your testimonial is submitted for approval.",
+      testimonialSubmitError: "Failed to submit testimonial. Please try again.",
       liveDemo: "Live Demo",
       sourceCode: "Source Code",
       present: "Present",
@@ -374,6 +381,7 @@ export default function Home() {
       contactError: "Veuillez remplir le nom, le courriel et le message.",
       contactEmailError: "Veuillez saisir une adresse courriel valide.",
       contactSubmitError: "Impossible d'envoyer le message. Veuillez reessayer.",
+      contactSentNotice: "Message envoyé ! Je vous répondrai bientôt.",
       testimonialAdd: "Partager un témoignage",
       testimonialName: "Votre nom",
       testimonialComment: "Votre commentaire",
@@ -381,11 +389,30 @@ export default function Home() {
       testimonialSubmit: "Soumettre",
       testimonialSubmitting: "Envoi...",
       testimonialError: "Veuillez saisir votre nom et votre commentaire.",
+      testimonialSubmittedNotice: "Merci ! Votre témoignage a été soumis pour approbation.",
+      testimonialSubmitError: "Impossible d'envoyer le témoignage. Veuillez réessayer.",
       liveDemo: "Démo",
       sourceCode: "Code source",
       present: "Présent",
     },
   }[lang];
+
+  const testimonialNotice =
+    testimonialNoticeKey === "submitted"
+      ? ui.testimonialSubmittedNotice
+      : testimonialNoticeKey === "submit_error"
+        ? ui.testimonialSubmitError
+        : "";
+
+  const contactNotice = contactNoticeKey === "sent" ? ui.contactSentNotice : "";
+  const contactErrorMessage =
+    contactErrorKey === "missing_fields"
+      ? ui.contactError
+      : contactErrorKey === "invalid_email"
+        ? ui.contactEmailError
+        : contactErrorKey === "submit_failed"
+          ? ui.contactSubmitError
+          : "";
 
   const skillsByCategory = useMemo(() => {
     const grouped: Record<string, Skill[]> = {
@@ -512,9 +539,9 @@ export default function Home() {
       return;
     }
     setTestimonialStatus("submitting");
-    setTestimonialNotice("");
+    setTestimonialNoticeKey("");
     try {
-      await fetch(`${API_BASE_URL}/public/testimonials`, {
+      const res = await fetch(`${API_BASE_URL}/public/testimonials`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -522,16 +549,16 @@ export default function Home() {
           content: testimonialContent.trim(),
         }),
       });
+      if (!res.ok) throw new Error("submit_failed");
       setTestimonialStatus("success");
       setTestimonialName("");
       setTestimonialContent("");
       setShowTestimonialForm(false);
-      setTestimonialNotice(
-        "Thanks! Your testimonial is submitted for approval.",
-      );
+      setTestimonialNoticeKey("submitted");
       loadTestimonials();
     } catch {
       setTestimonialStatus("error");
+      setTestimonialNoticeKey("submit_error");
     }
   };
 
@@ -541,18 +568,18 @@ export default function Home() {
     const message = contactMessage.trim();
 
     if (!name || !email || !message) {
-      setContactErrorMessage(ui.contactError);
+      setContactErrorKey("missing_fields");
       setContactStatus("error");
       return;
     }
     if (!emailRegex.test(email)) {
-      setContactErrorMessage(ui.contactEmailError);
+      setContactErrorKey("invalid_email");
       setContactStatus("error");
       return;
     }
     setContactStatus("submitting");
-    setContactNotice("");
-    setContactErrorMessage("");
+    setContactNoticeKey("");
+    setContactErrorKey("");
     try {
       const res = await fetch(`${API_BASE_URL}/public/messages`, {
         method: "POST",
@@ -565,13 +592,6 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        const contentType = res.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          const json = await res.json();
-          throw new Error(
-            json?.error?.message || json?.message || ui.contactSubmitError,
-          );
-        }
         throw new Error(ui.contactSubmitError);
       }
 
@@ -580,13 +600,11 @@ export default function Home() {
       setContactEmail("");
       setContactMessage("");
       setShowContactForm(false);
-      setContactErrorMessage("");
-      setContactNotice("Message sent! I will get back to you soon.");
+      setContactErrorKey("");
+      setContactNoticeKey("sent");
     } catch (err: unknown) {
-      const errMsg =
-        err instanceof Error && err.message ? err.message : ui.contactSubmitError;
-      setContactErrorMessage(errMsg);
       setContactStatus("error");
+      setContactErrorKey("submit_failed");
     }
   };
 
@@ -1479,7 +1497,7 @@ export default function Home() {
                 onChange={(e) => {
                   setContactName(e.target.value);
                   if (contactStatus === "error") setContactStatus("idle");
-                  if (contactErrorMessage) setContactErrorMessage("");
+                  if (contactErrorKey) setContactErrorKey("");
                 }}
                 placeholder={ui.contactName}
                 className="modal-input"
@@ -1489,7 +1507,7 @@ export default function Home() {
                 onChange={(e) => {
                   setContactEmail(e.target.value);
                   if (contactStatus === "error") setContactStatus("idle");
-                  if (contactErrorMessage) setContactErrorMessage("");
+                  if (contactErrorKey) setContactErrorKey("");
                 }}
                 placeholder={ui.contactEmail}
                 type="email"
@@ -1500,7 +1518,7 @@ export default function Home() {
                 onChange={(e) => {
                   setContactMessage(e.target.value);
                   if (contactStatus === "error") setContactStatus("idle");
-                  if (contactErrorMessage) setContactErrorMessage("");
+                  if (contactErrorKey) setContactErrorKey("");
                 }}
                 placeholder={ui.contactMessage}
                 rows={5}
@@ -1510,7 +1528,7 @@ export default function Home() {
 
             {contactStatus === "error" && (
               <p style={{ color: "#000000", marginTop: "0.8rem" }}>
-                {contactErrorMessage || ui.contactError}
+                {contactErrorMessage}
               </p>
             )}
 
