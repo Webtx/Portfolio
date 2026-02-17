@@ -535,15 +535,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    AOS.refreshHard();
+    const raf = requestAnimationFrame(() => AOS.refreshHard());
+    return () => cancelAnimationFrame(raf);
   }, [
     activeTab,
-    skills,
-    experiences,
-    education,
-    hobbies,
-    projects,
-    testimonials,
+    skills.length,
+    experiences.length,
+    education.length,
+    hobbies.length,
+    projects.length,
+    testimonials.length,
   ]);
 
   const submitTestimonial = async () => {
@@ -1386,7 +1387,7 @@ export default function Home() {
                         <div
                           key={item.id}
                           className="neo-card animate-blur-in-700"
-                          data-aos="fade-up"
+                          data-aos="fade"
                           style={{ padding: "1.5rem" }}
                         >
                           <div
