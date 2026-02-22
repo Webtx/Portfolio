@@ -312,6 +312,7 @@ export default function Home() {
   >("idle");
   const [testimonialErrorMessage, setTestimonialErrorMessage] = useState("");
   const [testimonialTurnstileToken, setTestimonialTurnstileToken] = useState("");
+  const [showMobileScrollTop, setShowMobileScrollTop] = useState(false);
   const [resume, setResume] = useState<Resume | null>(null);
 
   const contentPanelRef = useRef<HTMLDivElement | null>(null);
@@ -579,6 +580,16 @@ export default function Home() {
     testimonials.length,
   ]);
 
+  useEffect(() => {
+    const onScroll = () => {
+      setShowMobileScrollTop(window.scrollY > 280);
+    };
+
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const submitTestimonial = async () => {
     if (!testimonialName.trim() || !testimonialContent.trim()) {
       setTestimonialErrorMessage(ui.testimonialError);
@@ -687,6 +698,11 @@ export default function Home() {
       setContactStatus("error");
       setContactErrorKey("submit_failed");
     }
+  };
+
+  const scrollToPageTop = () => {
+    contentPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -1776,6 +1792,15 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={scrollToPageTop}
+        className={`mobile-scroll-top ${showMobileScrollTop ? "visible" : ""}`}
+        aria-label="Back to top"
+      >
+        ↑
+      </button>
     </>
   );
 }

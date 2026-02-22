@@ -282,6 +282,39 @@ body {
   display: none;
 }
 
+.mobile-scroll-top {
+  position: fixed;
+  right: 0.2rem;
+  bottom: 1rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 2px solid #0f172a;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  box-shadow: 3px 3px 0 0 #1e293b;
+  font-size: 1.05rem;
+  font-weight: 800;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 120;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.mobile-scroll-top.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mobile-scroll-top:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 #1e293b;
+}
+
 .neo-card {
   background: rgba(255, 255, 255, 0.6);
   border: 3px solid #0f172a;
@@ -759,6 +792,12 @@ body {
   }
 }
 
+@media (max-width: 1200px) {
+  .mobile-scroll-top {
+    display: inline-flex;
+  }
+}
+
 @media (max-width: 768px) {
   .floating-shape,
   .topbar-shape {
@@ -826,6 +865,11 @@ body {
 
   .nav-tab {
     width: 100%;
+  }
+
+  .mobile-scroll-top {
+    right: 0.1rem;
+    bottom: 0.85rem;
   }
 }
 
