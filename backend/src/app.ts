@@ -8,6 +8,8 @@ import { apiRouter } from "./routes";
 import { errorHandler } from "./middlewares/errorHandler";
 
 export const app = express();
+// Trust the first proxy so req.ip works correctly behind platforms like Vercel/load balancers.
+app.set("trust proxy", 1);
 
 cloudinary.config({ cloudinary_url: env.CLOUDINARY_URL });
 

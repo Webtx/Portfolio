@@ -11,7 +11,8 @@ const envSchema = z.object({
   AUTH0_AUDIENCE: z.string().min(1),
   ADMIN_PERMISSION: z.string().default("admin:full"),
   CORS_ORIGIN: z.string().default("http://localhost:3000"),
-  CLOUDINARY_URL: z.string().min(1)
+  CLOUDINARY_URL: z.string().min(1),
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional()
 });
 
 export const env = envSchema.parse(process.env);

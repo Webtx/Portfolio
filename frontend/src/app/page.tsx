@@ -5,6 +5,7 @@ import AOS from "aos";
 import Image from "next/image";
 import LoginButton from "@/components/auth/LoginButton";
 import LogoutButton from "@/components/auth/LogoutButton";
+import TurnstileWidget from "@/components/TurnstileWidget";
 import { API_BASE_URL, getAccessToken } from "@/lib/api";
 import {
   SiJavascript,
@@ -46,6 +47,7 @@ import {
 import { IconType } from "react-icons";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 type TabType = "about" | "projects" | "testimonials";
 type BilingualText = { en: string; fr: string };
@@ -291,12 +293,15 @@ export default function Home() {
   >("idle");
   const [contactNotice, setContactNotice] = useState("");
   const [contactErrorMessage, setContactErrorMessage] = useState("");
+  const [contactTurnstileToken, setContactTurnstileToken] = useState("");
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   const [testimonialName, setTestimonialName] = useState("");
   const [testimonialContent, setTestimonialContent] = useState("");
   const [testimonialStatus, setTestimonialStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
+  const [testimonialErrorMessage, setTestimonialErrorMessage] = useState("");
+  const [testimonialTurnstileToken, setTestimonialTurnstileToken] = useState("");
   const [resume, setResume] = useState<Resume | null>(null);
   const summary = {
     en: "Hello, I'm Annie. I like designing and building clean, user-friendly experiences, and I enjoy artistic projects that blend creativity with technology.",
@@ -332,6 +337,7 @@ export default function Home() {
       contactSending: "Sending...",
       contactError: "Please fill out name, email, and message.",
       contactEmailError: "Please enter a valid email address.",
+      securityCheckError: "Please complete the security check.",
       contactSubmitError: "Failed to send message. Please try again.",
       testimonialAdd: "Share a testimonial",
       testimonialName: "Your name",
@@ -340,6 +346,7 @@ export default function Home() {
       testimonialSubmit: "Submit",
       testimonialSubmitting: "Sending...",
       testimonialError: "Please enter your name and comment.",
+      testimonialSubmitError: "Failed to send testimonial. Please try again.",
       liveDemo: "Live Demo",
       sourceCode: "Source Code",
       present: "Present",
@@ -373,6 +380,7 @@ export default function Home() {
       contactSending: "Envoi...",
       contactError: "Veuillez remplir le nom, le courriel et le message.",
       contactEmailError: "Veuillez saisir une adresse courriel valide.",
+      securityCheckError: "Veuillez completer la verification de securite.",
       contactSubmitError: "Impossible d'envoyer le message. Veuillez reessayer.",
       testimonialAdd: "Partager un témoignage",
       testimonialName: "Votre nom",
@@ -381,6 +389,8 @@ export default function Home() {
       testimonialSubmit: "Soumettre",
       testimonialSubmitting: "Envoi...",
       testimonialError: "Veuillez saisir votre nom et votre commentaire.",
+      testimonialSubmitError:
+        "Impossible d'envoyer le temoignage. Veuillez reessayer.",
       liveDemo: "Démo",
       sourceCode: "Code source",
       present: "Présent",
@@ -495,6 +505,14 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!showContactForm) setContactTurnstileToken("");
+  }, [showContactForm]);
+
+  useEffect(() => {
+    if (!showTestimonialForm) setTestimonialTurnstileToken("");
+  }, [showTestimonialForm]);
+
+  useEffect(() => {
     AOS.refreshHard();
   }, [
     activeTab,
@@ -508,29 +526,55 @@ export default function Home() {
 
   const submitTestimonial = async () => {
     if (!testimonialName.trim() || !testimonialContent.trim()) {
+      setTestimonialErrorMessage(ui.testimonialError);
+      setTestimonialStatus("error");
+      return;
+    }
+    if (TURNSTILE_SITE_KEY && !testimonialTurnstileToken) {
+      setTestimonialErrorMessage(ui.securityCheckError);
       setTestimonialStatus("error");
       return;
     }
     setTestimonialStatus("submitting");
     setTestimonialNotice("");
+    setTestimonialErrorMessage("");
     try {
-      await fetch(`${API_BASE_URL}/public/testimonials`, {
+      const res = await fetch(`${API_BASE_URL}/public/testimonials`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: testimonialName.trim(),
           content: testimonialContent.trim(),
+          turnstileToken: testimonialTurnstileToken,
         }),
       });
+
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const json = await res.json();
+          throw new Error(
+            json?.error?.message || json?.message || ui.testimonialSubmitError,
+          );
+        }
+        throw new Error(ui.testimonialSubmitError);
+      }
+
       setTestimonialStatus("success");
       setTestimonialName("");
       setTestimonialContent("");
+      setTestimonialTurnstileToken("");
       setShowTestimonialForm(false);
       setTestimonialNotice(
         "Thanks! Your testimonial is submitted for approval.",
       );
       loadTestimonials();
-    } catch {
+    } catch (err: unknown) {
+      const errMsg =
+        err instanceof Error && err.message
+          ? err.message
+          : ui.testimonialSubmitError;
+      setTestimonialErrorMessage(errMsg);
       setTestimonialStatus("error");
     }
   };
@@ -550,6 +594,11 @@ export default function Home() {
       setContactStatus("error");
       return;
     }
+    if (TURNSTILE_SITE_KEY && !contactTurnstileToken) {
+      setContactErrorMessage(ui.securityCheckError);
+      setContactStatus("error");
+      return;
+    }
     setContactStatus("submitting");
     setContactNotice("");
     setContactErrorMessage("");
@@ -561,6 +610,7 @@ export default function Home() {
           name,
           email,
           message,
+          turnstileToken: contactTurnstileToken,
         }),
       });
 
@@ -579,6 +629,7 @@ export default function Home() {
       setContactName("");
       setContactEmail("");
       setContactMessage("");
+      setContactTurnstileToken("");
       setShowContactForm(false);
       setContactErrorMessage("");
       setContactNotice("Message sent! I will get back to you soon.");
@@ -776,7 +827,7 @@ export default function Home() {
 
               <div className="social-links">
                 <a
-                  href="https://github.com"
+                  href="https://github.com/Webtx"
                   className="social-btn hint--top hint--rounded"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -785,7 +836,7 @@ export default function Home() {
                   <FaGithub size={20} />
                 </a>
                 <a
-                  href="https://linkedin.com"
+                  href="https://www.linkedin.com/in/webtx/"
                   className="social-btn hint--top hint--rounded"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -1464,12 +1515,14 @@ export default function Home() {
                   background: "transparent",
                   color: "#0f172a",
                   border: "none",
-                  fontSize: "1.2rem",
+                  fontSize: "1.45rem",
+                  lineHeight: 1,
+                  transform: "translateY(-5px)",
                   cursor: "pointer",
                 }}
                 aria-label="Close"
               >
-                ✁E
+                ×
               </button>
             </div>
 
@@ -1507,6 +1560,16 @@ export default function Home() {
                 className="modal-input modal-textarea"
               />
             </div>
+
+            {TURNSTILE_SITE_KEY && (
+              <div style={{ marginTop: "0.8rem" }}>
+                <TurnstileWidget
+                  siteKey={TURNSTILE_SITE_KEY}
+                  action="contact"
+                  onTokenChange={setContactTurnstileToken}
+                />
+              </div>
+            )}
 
             {contactStatus === "error" && (
               <p style={{ color: "#000000", marginTop: "0.8rem" }}>
@@ -1574,34 +1637,54 @@ export default function Home() {
                   background: "transparent",
                   color: "#0f172a",
                   border: "none",
-                  fontSize: "1.2rem",
+                  fontSize: "1.45rem",
+                  lineHeight: 1,
+                  transform: "translateY(-5px)",
                   cursor: "pointer",
                 }}
                 aria-label="Close"
               >
-                ✁E
+                ×
               </button>
             </div>
 
             <div className="modal-fields">
               <input
                 value={testimonialName}
-                onChange={(e) => setTestimonialName(e.target.value)}
+                onChange={(e) => {
+                  setTestimonialName(e.target.value);
+                  if (testimonialStatus === "error") setTestimonialStatus("idle");
+                  if (testimonialErrorMessage) setTestimonialErrorMessage("");
+                }}
                 placeholder={ui.testimonialName}
                 className="modal-input"
               />
               <textarea
                 value={testimonialContent}
-                onChange={(e) => setTestimonialContent(e.target.value)}
+                onChange={(e) => {
+                  setTestimonialContent(e.target.value);
+                  if (testimonialStatus === "error") setTestimonialStatus("idle");
+                  if (testimonialErrorMessage) setTestimonialErrorMessage("");
+                }}
                 placeholder={ui.testimonialComment}
                 rows={5}
                 className="modal-input modal-textarea"
               />
             </div>
 
+            {TURNSTILE_SITE_KEY && (
+              <div style={{ marginTop: "0.8rem" }}>
+                <TurnstileWidget
+                  siteKey={TURNSTILE_SITE_KEY}
+                  action="testimonial"
+                  onTokenChange={setTestimonialTurnstileToken}
+                />
+              </div>
+            )}
+
             {testimonialStatus === "error" && (
               <p style={{ color: "#ff9b9b", marginTop: "0.8rem" }}>
-                {ui.testimonialError}
+                {testimonialErrorMessage || ui.testimonialError}
               </p>
             )}
 

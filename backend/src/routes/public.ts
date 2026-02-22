@@ -9,6 +9,7 @@ import { getContactInfo } from "../controllers/contactInfoController";
 import { createMessage } from "../controllers/messageController";
 import { listApprovedTestimonials, submitTestimonial } from "../controllers/testimonialController";
 import { publicMessageLimiter, publicWriteLimiter } from "../middlewares/rateLimit";
+import { requireTurnstile } from "../middlewares/turnstile";
 
 export const publicRouter = Router();
 
@@ -21,5 +22,15 @@ publicRouter.get("/hobbies", listHobbies);
 publicRouter.get("/contact-info", getContactInfo);
 publicRouter.get("/testimonials", listApprovedTestimonials);
 
-publicRouter.post("/messages", publicMessageLimiter, createMessage);
-publicRouter.post("/testimonials", publicWriteLimiter, submitTestimonial);
+publicRouter.post(
+  "/messages",
+  publicMessageLimiter,
+  requireTurnstile("contact"),
+  createMessage,
+);
+publicRouter.post(
+  "/testimonials",
+  publicWriteLimiter,
+  requireTurnstile("testimonial"),
+  submitTestimonial,
+);
