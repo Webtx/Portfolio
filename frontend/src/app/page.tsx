@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AOS from "aos";
 import Image from "next/image";
 import LoginButton from "@/components/auth/LoginButton";
@@ -283,7 +283,9 @@ export default function Home() {
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loadingTestimonials, setLoadingTestimonials] = useState(false);
-  const [testimonialNotice, setTestimonialNotice] = useState("");
+  const [testimonialNoticeKey, setTestimonialNoticeKey] = useState<
+    "" | "submitted" | "submit_error"
+  >("");
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -291,8 +293,10 @@ export default function Home() {
   const [contactStatus, setContactStatus] = useState<
     "idle" | "submitting" | "success" | "error"
   >("idle");
-  const [contactNotice, setContactNotice] = useState("");
-  const [contactErrorMessage, setContactErrorMessage] = useState("");
+  const [contactNoticeKey, setContactNoticeKey] = useState<"" | "sent">("");
+  const [contactErrorKey, setContactErrorKey] = useState<
+    "" | "missing_fields" | "invalid_email" | "security_check" | "submit_failed"
+  >("");
   const [contactTurnstileToken, setContactTurnstileToken] = useState("");
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   const [testimonialName, setTestimonialName] = useState("");
@@ -303,6 +307,8 @@ export default function Home() {
   const [testimonialErrorMessage, setTestimonialErrorMessage] = useState("");
   const [testimonialTurnstileToken, setTestimonialTurnstileToken] = useState("");
   const [resume, setResume] = useState<Resume | null>(null);
+
+  const contentPanelRef = useRef<HTMLDivElement | null>(null);
   const summary = {
     en: "Hello, I'm Annie. I like designing and building clean, user-friendly experiences, and I enjoy artistic projects that blend creativity with technology.",
     fr: "Bonjour, je m'appelle Annie. J'aime concevoir et créer des expériences claires et conviviales, et j'apprécie les projets artistiques qui allient créativité et technologie.",
@@ -339,6 +345,7 @@ export default function Home() {
       contactEmailError: "Please enter a valid email address.",
       securityCheckError: "Please complete the security check.",
       contactSubmitError: "Failed to send message. Please try again.",
+      contactSentNotice: "Message sent! I will get back to you soon.",
       testimonialAdd: "Share a testimonial",
       testimonialName: "Your name",
       testimonialComment: "Your comment",
@@ -346,7 +353,8 @@ export default function Home() {
       testimonialSubmit: "Submit",
       testimonialSubmitting: "Sending...",
       testimonialError: "Please enter your name and comment.",
-      testimonialSubmitError: "Failed to send testimonial. Please try again.",
+      testimonialSubmittedNotice: "Thanks! Your testimonial is submitted for approval.",
+      testimonialSubmitError: "Failed to submit testimonial. Please try again.",
       liveDemo: "Live Demo",
       sourceCode: "Source Code",
       present: "Present",
@@ -382,6 +390,7 @@ export default function Home() {
       contactEmailError: "Veuillez saisir une adresse courriel valide.",
       securityCheckError: "Veuillez completer la verification de securite.",
       contactSubmitError: "Impossible d'envoyer le message. Veuillez reessayer.",
+      contactSentNotice: "Message envoyé ! Je vous répondrai bientôt.",
       testimonialAdd: "Partager un témoignage",
       testimonialName: "Votre nom",
       testimonialComment: "Votre commentaire",
@@ -389,13 +398,48 @@ export default function Home() {
       testimonialSubmit: "Soumettre",
       testimonialSubmitting: "Envoi...",
       testimonialError: "Veuillez saisir votre nom et votre commentaire.",
-      testimonialSubmitError:
-        "Impossible d'envoyer le temoignage. Veuillez reessayer.",
+      testimonialSubmittedNotice: "Merci ! Votre témoignage a été soumis pour approbation.",
+      testimonialSubmitError: "Impossible d'envoyer le témoignage. Veuillez réessayer.",
       liveDemo: "Démo",
       sourceCode: "Code source",
       present: "Présent",
     },
   }[lang];
+
+  const testimonialNotice =
+    testimonialNoticeKey === "submitted"
+      ? ui.testimonialSubmittedNotice
+      : testimonialNoticeKey === "submit_error"
+        ? ui.testimonialSubmitError
+        : "";
+
+  const contactNotice = contactNoticeKey === "sent" ? ui.contactSentNotice : "";
+  const contactErrorMessage =
+    contactErrorKey === "missing_fields"
+      ? ui.contactError
+      : contactErrorKey === "invalid_email"
+        ? ui.contactEmailError
+        : contactErrorKey === "security_check"
+          ? ui.securityCheckError
+        : contactErrorKey === "submit_failed"
+          ? ui.contactSubmitError
+          : "";
+
+  const navTabsRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollTabToTop = () => {
+    const panel = contentPanelRef.current;
+    if (panel && panel.scrollHeight > panel.clientHeight + 1) {
+      panel.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+    navTabsRef.current?.scrollIntoView({ behavior: "auto", block: "start" });
+  };
+
+  const switchTab = (tab: TabType) => {
+    setActiveTab(tab);
+    requestAnimationFrame(() => requestAnimationFrame(scrollTabToTop));
+  };
 
   const skillsByCategory = useMemo(() => {
     const grouped: Record<string, Skill[]> = {
@@ -513,15 +557,16 @@ export default function Home() {
   }, [showTestimonialForm]);
 
   useEffect(() => {
-    AOS.refreshHard();
+    const raf = requestAnimationFrame(() => AOS.refreshHard());
+    return () => cancelAnimationFrame(raf);
   }, [
     activeTab,
-    skills,
-    experiences,
-    education,
-    hobbies,
-    projects,
-    testimonials,
+    skills.length,
+    experiences.length,
+    education.length,
+    hobbies.length,
+    projects.length,
+    testimonials.length,
   ]);
 
   const submitTestimonial = async () => {
@@ -536,7 +581,7 @@ export default function Home() {
       return;
     }
     setTestimonialStatus("submitting");
-    setTestimonialNotice("");
+    setTestimonialNoticeKey("");
     setTestimonialErrorMessage("");
     try {
       const res = await fetch(`${API_BASE_URL}/public/testimonials`, {
@@ -548,7 +593,6 @@ export default function Home() {
           turnstileToken: testimonialTurnstileToken,
         }),
       });
-
       if (!res.ok) {
         const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("application/json")) {
@@ -559,15 +603,12 @@ export default function Home() {
         }
         throw new Error(ui.testimonialSubmitError);
       }
-
       setTestimonialStatus("success");
       setTestimonialName("");
       setTestimonialContent("");
       setTestimonialTurnstileToken("");
       setShowTestimonialForm(false);
-      setTestimonialNotice(
-        "Thanks! Your testimonial is submitted for approval.",
-      );
+      setTestimonialNoticeKey("submitted");
       loadTestimonials();
     } catch (err: unknown) {
       const errMsg =
@@ -576,6 +617,7 @@ export default function Home() {
           : ui.testimonialSubmitError;
       setTestimonialErrorMessage(errMsg);
       setTestimonialStatus("error");
+      setTestimonialNoticeKey("submit_error");
     }
   };
 
@@ -585,23 +627,23 @@ export default function Home() {
     const message = contactMessage.trim();
 
     if (!name || !email || !message) {
-      setContactErrorMessage(ui.contactError);
+      setContactErrorKey("missing_fields");
       setContactStatus("error");
       return;
     }
     if (!emailRegex.test(email)) {
-      setContactErrorMessage(ui.contactEmailError);
+      setContactErrorKey("invalid_email");
       setContactStatus("error");
       return;
     }
     if (TURNSTILE_SITE_KEY && !contactTurnstileToken) {
-      setContactErrorMessage(ui.securityCheckError);
+      setContactErrorKey("security_check");
       setContactStatus("error");
       return;
     }
     setContactStatus("submitting");
-    setContactNotice("");
-    setContactErrorMessage("");
+    setContactNoticeKey("");
+    setContactErrorKey("");
     try {
       const res = await fetch(`${API_BASE_URL}/public/messages`, {
         method: "POST",
@@ -615,13 +657,6 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        const contentType = res.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          const json = await res.json();
-          throw new Error(
-            json?.error?.message || json?.message || ui.contactSubmitError,
-          );
-        }
         throw new Error(ui.contactSubmitError);
       }
 
@@ -631,13 +666,11 @@ export default function Home() {
       setContactMessage("");
       setContactTurnstileToken("");
       setShowContactForm(false);
-      setContactErrorMessage("");
-      setContactNotice("Message sent! I will get back to you soon.");
+      setContactErrorKey("");
+      setContactNoticeKey("sent");
     } catch (err: unknown) {
-      const errMsg =
-        err instanceof Error && err.message ? err.message : ui.contactSubmitError;
-      setContactErrorMessage(errMsg);
       setContactStatus("error");
+      setContactErrorKey("submit_failed");
     }
   };
 
@@ -774,7 +807,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="app-container" style={{ paddingTop: "120px" }}>
+      <div className="app-container">
         <div className="portfolio-wrapper">
           {/* LEFT SIDEBAR - PROFILE */}
           <div className="profile-sidebar" data-aos="fade-right">
@@ -868,29 +901,29 @@ export default function Home() {
           {/* RIGHT SIDE - CONTENT */}
           <div className="content-area">
             {/* NAVIGATION TABS */}
-            <div className="nav-tabs" data-aos="fade-down">
+            <div className="nav-tabs" data-aos="fade-down" ref={navTabsRef}>
               <button
                 className={`nav-tab ${activeTab === "about" ? "active" : ""}`}
-                onClick={() => setActiveTab("about")}
+                onClick={() => switchTab("about")}
               >
                 {ui.aboutMe}
               </button>
               <button
                 className={`nav-tab ${activeTab === "projects" ? "active" : ""}`}
-                onClick={() => setActiveTab("projects")}
+                onClick={() => switchTab("projects")}
               >
                 {ui.projects}
               </button>
               <button
                 className={`nav-tab ${activeTab === "testimonials" ? "active" : ""}`}
-                onClick={() => setActiveTab("testimonials")}
+                onClick={() => switchTab("testimonials")}
               >
                 {ui.testimonials}
               </button>
             </div>
 
             {/* CONTENT PANEL */}
-            <div className="content-panel">
+            <div className="content-panel" ref={contentPanelRef}>
               {activeTab === "about" && (
                 <div
                   id="about-container"
@@ -1397,7 +1430,7 @@ export default function Home() {
                         <div
                           key={item.id}
                           className="neo-card animate-blur-in-700"
-                          data-aos="fade-up"
+                          data-aos="fade"
                           style={{ padding: "1.5rem" }}
                         >
                           <div
@@ -1532,7 +1565,7 @@ export default function Home() {
                 onChange={(e) => {
                   setContactName(e.target.value);
                   if (contactStatus === "error") setContactStatus("idle");
-                  if (contactErrorMessage) setContactErrorMessage("");
+                  if (contactErrorKey) setContactErrorKey("");
                 }}
                 placeholder={ui.contactName}
                 className="modal-input"
@@ -1542,7 +1575,7 @@ export default function Home() {
                 onChange={(e) => {
                   setContactEmail(e.target.value);
                   if (contactStatus === "error") setContactStatus("idle");
-                  if (contactErrorMessage) setContactErrorMessage("");
+                  if (contactErrorKey) setContactErrorKey("");
                 }}
                 placeholder={ui.contactEmail}
                 type="email"
@@ -1553,7 +1586,7 @@ export default function Home() {
                 onChange={(e) => {
                   setContactMessage(e.target.value);
                   if (contactStatus === "error") setContactStatus("idle");
-                  if (contactErrorMessage) setContactErrorMessage("");
+                  if (contactErrorKey) setContactErrorKey("");
                 }}
                 placeholder={ui.contactMessage}
                 rows={5}
@@ -1573,7 +1606,7 @@ export default function Home() {
 
             {contactStatus === "error" && (
               <p style={{ color: "#000000", marginTop: "0.8rem" }}>
-                {contactErrorMessage || ui.contactError}
+                {contactErrorMessage}
               </p>
             )}
 
