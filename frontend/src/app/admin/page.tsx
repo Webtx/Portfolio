@@ -1140,7 +1140,7 @@ function MessagesPanel() {
               className="admin-item"
             >
               <div className="font-semibold">
-                {String(typedItem.name)} ? {String(typedItem.email)}
+                {String(typedItem.name)} · {String(typedItem.email)}
               </div>
               <div className="text-xs text-slate-600">
                 {(typedItem.subject as string) || ""}

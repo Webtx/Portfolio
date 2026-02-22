@@ -47,6 +47,7 @@ import {
 import { IconType } from "react-icons";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const fullNameRegex = /^[A-Za-zÀ-ÖØ-öø-ÿ'’-]+(?:\s+[A-Za-zÀ-ÖØ-öø-ÿ'’-]+)+$/;
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 
 type TabType = "about" | "projects" | "testimonials";
@@ -295,7 +296,12 @@ export default function Home() {
   >("idle");
   const [contactNoticeKey, setContactNoticeKey] = useState<"" | "sent">("");
   const [contactErrorKey, setContactErrorKey] = useState<
-    "" | "missing_fields" | "invalid_email" | "security_check" | "submit_failed"
+    | ""
+    | "missing_fields"
+    | "invalid_name"
+    | "invalid_email"
+    | "security_check"
+    | "submit_failed"
   >("");
   const [contactTurnstileToken, setContactTurnstileToken] = useState("");
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
@@ -335,13 +341,14 @@ export default function Home() {
       hobbies: "Hobbies",
       getInTouch: "Get in Touch",
       contactTitle: "Get in Touch",
-      contactName: "Name",
+      contactName: "First and last name",
       contactEmail: "Email",
       contactMessage: "Message",
       contactCancel: "Cancel",
       contactSend: "Send",
       contactSending: "Sending...",
       contactError: "Please fill out name, email, and message.",
+      contactNameError: "Please enter a first and last name.",
       contactEmailError: "Please enter a valid email address.",
       securityCheckError: "Please complete the security check.",
       contactSubmitError: "Failed to send message. Please try again.",
@@ -380,13 +387,14 @@ export default function Home() {
       hobbies: "Loisirs",
       getInTouch: "Me contacter",
       contactTitle: "Me contacter",
-      contactName: "Nom",
+      contactName: "Prenom et nom",
       contactEmail: "Courriel",
       contactMessage: "Message",
       contactCancel: "Annuler",
       contactSend: "Envoyer",
       contactSending: "Envoi...",
       contactError: "Veuillez remplir le nom, le courriel et le message.",
+      contactNameError: "Veuillez saisir un prenom et un nom.",
       contactEmailError: "Veuillez saisir une adresse courriel valide.",
       securityCheckError: "Veuillez completer la verification de securite.",
       contactSubmitError: "Impossible d'envoyer le message. Veuillez reessayer.",
@@ -417,6 +425,8 @@ export default function Home() {
   const contactErrorMessage =
     contactErrorKey === "missing_fields"
       ? ui.contactError
+      : contactErrorKey === "invalid_name"
+        ? ui.contactNameError
       : contactErrorKey === "invalid_email"
         ? ui.contactEmailError
         : contactErrorKey === "security_check"
@@ -628,6 +638,11 @@ export default function Home() {
 
     if (!name || !email || !message) {
       setContactErrorKey("missing_fields");
+      setContactStatus("error");
+      return;
+    }
+    if (!fullNameRegex.test(name)) {
+      setContactErrorKey("invalid_name");
       setContactStatus("error");
       return;
     }
@@ -1561,6 +1576,8 @@ export default function Home() {
 
             <div className="modal-fields">
               <input
+                id="contact-name"
+                name="name"
                 value={contactName}
                 onChange={(e) => {
                   setContactName(e.target.value);
@@ -1571,6 +1588,8 @@ export default function Home() {
                 className="modal-input"
               />
               <input
+                id="contact-email"
+                name="email"
                 value={contactEmail}
                 onChange={(e) => {
                   setContactEmail(e.target.value);
@@ -1582,6 +1601,8 @@ export default function Home() {
                 className="modal-input"
               />
               <textarea
+                id="contact-message"
+                name="message"
                 value={contactMessage}
                 onChange={(e) => {
                   setContactMessage(e.target.value);
@@ -1683,6 +1704,8 @@ export default function Home() {
 
             <div className="modal-fields">
               <input
+                id="testimonial-name"
+                name="name"
                 value={testimonialName}
                 onChange={(e) => {
                   setTestimonialName(e.target.value);
@@ -1693,6 +1716,8 @@ export default function Home() {
                 className="modal-input"
               />
               <textarea
+                id="testimonial-content"
+                name="content"
                 value={testimonialContent}
                 onChange={(e) => {
                   setTestimonialContent(e.target.value);
